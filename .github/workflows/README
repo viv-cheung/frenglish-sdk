@@ -1,0 +1,10 @@
+1. Create a file named .github/workflows/frenglish-translation.yml in your repository.
+2. Copy the provided GitHub Actions workflow into this file. The workflow is found in this folder called
+"frenglish-translation.yml".
+3. Set up the FRENGLISH_API_KEY secret in your GitHub repository settings. You could find the FRENGLISH_API_KEY at 
+wwww.frenglish.ai when you log in and go to the "Translate" page.
+4. If you haven't created a project in Frenglish yet, create a CLI/SDK project and get the API key.
+5. Configure your translation configuration in that project as well.
+6. Install the Frenglish SDK in your project:
+   `npm install frenglish-sdk`
+7. Use the SDK to send translation requests and handle the responses.

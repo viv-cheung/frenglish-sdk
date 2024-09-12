@@ -1,0 +1,55 @@
+/**
+ // Example client usage:
+ npm install frenglish-sdk
+
+// Import the Frenglish SDK
+const FrenglishSDK = require('frenglish-sdk');
+
+// Initialize the SDK with the API key
+const apiKey = 'your-frenglish-api-key-here';
+const frenglish = new FrenglishSDK(apiKey);
+
+async function main() {
+  try {
+    // Register a webhook to receive translation notifications
+    await frenglish.registerWebhook('https://your-app.com/frenglish-webhook');
+    console.log('Webhook registered successfully');
+
+    // Request a translation
+    const translationId = await frenglish.requestTranslation({
+      text: 'Hello, world!',
+      sourceLanguage: 'en',
+      targetLanguage: 'fr'
+    });
+    console.log(`Translation requested. ID: ${translationId}`);
+
+    // Later, when you receive a webhook notification, you can get the translation
+    const translation = await frenglish.getTranslation(translationId);
+    console.log('Received translation:', translation);
+  } catch (error) {
+    console.error('Error:', error.message);
+  }
+}
+
+// Set up a webhook endpoint in your application
+const express = require('express');
+const app = express();
+app.use(express.json());
+
+app.post('/frenglish-webhook', (req, res) => {
+  const { translationId, status } = req.body;
+  console.log(`Received webhook: Translation ${translationId} status is ${status}`);
+  if (status === 'completed') {
+    // Fetch the completed translation
+    frenglish.getTranslation(translationId)
+      .then(translation => {
+        console.log('Completed translation:', translation);
+        // Process the translation as needed
+      })
+      .catch(error => console.error('Error fetching translation:', error));
+  }
+  res.sendStatus(200);
+});
+
+main();
+**/

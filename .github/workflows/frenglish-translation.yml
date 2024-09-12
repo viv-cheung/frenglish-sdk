@@ -1,0 +1,42 @@
+name: Frenglish Translation
+
+on:
+  push:
+    branches:
+      - '**'  # This will trigger on pushes to any branch
+
+jobs:
+  translate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Get branch name
+        id: branch-name
+        run: echo "::set-output name=branch::${GITHUB_REF#refs/heads/}"
+
+      - name: Run translation script
+        env:
+          FRENGLISH_API_KEY: ${{ secrets.FRENGLISH_API_KEY }}
+        run: node .github/scripts/translate.js
+
+      - name: Create Pull Request
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git checkout -b ${{ steps.branch-name.outputs.branch }}-frenglish-translations
+          git add .
+          git commit -m "Add translated files"
+          git push origin ${{ steps.branch-name.outputs.branch }}-frenglish-translations
+          gh pr create --base ${{ steps.branch-name.outputs.branch }} --head ${{ steps.branch-name.outputs.branch }}-frenglish-translations --title "Frenglish Translation Update for ${{ steps.branch-name.outputs.branch }}" --body "This PR contains updated translations for the changed files in branch ${{ steps.branch-name.outputs.branch }}."
