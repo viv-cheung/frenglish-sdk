@@ -81,7 +81,7 @@ class FrenglishSDK {
   }
 
   // Get the translation content (call this after the translation status is "COMPLETED")
-  async getTranslationContent(translationId: number): Promise<TranslationResponse> {
+  async getTranslationContent(translationId: number): Promise<TranslationResponse[]> {
     const response = await fetch(`${FRENGLISH_BACKEND_URL}/api/translation/get-translation`, {
       method: 'POST',
       headers: {
