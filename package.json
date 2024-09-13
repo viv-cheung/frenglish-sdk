@@ -1,6 +1,6 @@
 {
     "name": "frenglish-sdk",
-    "version": "1.0.0",
+    "version": "0.1",
     "description": "SDK for Frenglish translation service",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -14,7 +14,7 @@
         "sdk",
         "frenglish"
     ],
-    "author": "viv-cheung",
+    "author": "frenglish",
     "license": "MIT",
     "devDependencies": {
         "@types/express": "^4.17.21",
