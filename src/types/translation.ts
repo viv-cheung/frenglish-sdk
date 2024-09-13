@@ -1,0 +1,6 @@
+export enum TranslationStatus {
+  CANCELLED = 'CANCELLED',
+  QUEUED = 'QUEUED',
+  PROCESSING = 'PROCESSING',
+  COMPLETED = 'COMPLETED'
+}

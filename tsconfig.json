@@ -1,8 +1,11 @@
 {
     "compilerOptions": {
+      "declaration": true,
       "module": "commonjs",
       "target": "ES2020",
       "outDir": "dist",
+      "rootDir": "./src",
+      "moduleResolution": "node",
       "typeRoots": ["./node_modules/@types", "./types"],
       "types": ["node", "express"],
       "strict": true,
@@ -18,7 +21,7 @@
       "experimentalDecorators": true,
       "emitDecoratorMetadata": true
     },
-    "include": ["src", "tests"],
+    "include": ["src/**/*", "tests"],
     "exclude": ["node_modules"]
   }
   

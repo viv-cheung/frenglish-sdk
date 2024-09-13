@@ -1,4 +1,6 @@
 import { FRENGLISH_BACKEND_URL } from './config/config';
+import { RequestTranslationResponse, TranslationResponse } from './types/api';
+import { TranslationStatus } from './types/translation';
 
 class FrenglishSDK {
   private apiKey: string;
@@ -24,7 +26,12 @@ class FrenglishSDK {
   }
 
   // Send a translation request to Frenglish!
-  async requestTranslation(filenames: [], content: []): Promise<string> {
+  async translate(filenames: [], content: []): Promise<RequestTranslationResponse | undefined> {
+    const POLLING_INTERVAL = 5000 // 5 seconds
+    const MAX_POLLING_TIME = 1800000 // 30 minutes  
+    const startTime = Date.now()
+
+    // Sending translation request
     const response = await fetch(`${FRENGLISH_BACKEND_URL}/api/translation/request-translation`, {
       method: 'POST',
       headers: {
@@ -35,14 +42,27 @@ class FrenglishSDK {
     });
   
     if (!response.ok) {
-      throw new Error('Failed to request translation');
+      throw new Error(`Failed to request translation: ${response}`);
     }
-  
-    return response.json();
+
+    const data: RequestTranslationResponse = await response.json()
+    while (Date.now() - startTime < MAX_POLLING_TIME) {
+      const translationStatus = await this.getTranslationStatus(data.translationId)
+      if (translationStatus === TranslationStatus.COMPLETED) {
+        const content = await this.getTranslationContent(data.translationId)
+        return { translationId: data.translationId, content }
+      } else if (translationStatus === TranslationStatus.CANCELLED) { 
+        throw new Error('Translation cancelled')
+        return
+      }
+
+      // If not completed, wait before checking again
+      await new Promise(resolve => setTimeout(resolve, POLLING_INTERVAL))
+    }
   }
 
   // Polling request to get the translation status once completed
-  async getTranslationStatus(translationId: number): Promise<string> {
+  async getTranslationStatus(translationId: number): Promise<TranslationStatus> {
     const response = await fetch(`${FRENGLISH_BACKEND_URL}/api/translation/get-status`, {
       method: 'POST',
       headers: {
@@ -57,12 +77,11 @@ class FrenglishSDK {
     }
 
     const data = await response.json();
-    console.log("get-status response ", data)
     return data.status;
   }
 
   // Get the translation content (call this after the translation status is "COMPLETED")
-  async getTranslation(translationId: number): Promise<any> {
+  async getTranslationContent(translationId: number): Promise<TranslationResponse> {
     const response = await fetch(`${FRENGLISH_BACKEND_URL}/api/translation/get-translation`, {
       method: 'POST',
       headers: {
