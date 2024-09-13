@@ -16,5 +16,5 @@ export type TranslationStatusResponse = {
 
 export type RequestTranslationResponse = {
     translationId: number,
-    content: TranslationResponse
+    content: TranslationResponse[]
 }

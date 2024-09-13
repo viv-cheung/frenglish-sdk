@@ -8,6 +8,9 @@ on:
 jobs:
   translate:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -18,11 +21,13 @@ jobs:
           node-version: '18'
 
       - name: Install dependencies
-        run: npm install
+        run: |
+          npm install
+          npm install frenglish-sdk
 
       - name: Get branch name
         id: branch-name
-        run: echo "::set-output name=branch::${GITHUB_REF#refs/heads/}"
+        run: echo "branch=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
 
       - name: Run translation script
         env:
@@ -30,13 +35,11 @@ jobs:
         run: node .github/scripts/translate.js
 
       - name: Create Pull Request
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          git checkout -b ${{ steps.branch-name.outputs.branch }}-frenglish-translations
-          git add .
-          git commit -m "Add translated files"
-          git push origin ${{ steps.branch-name.outputs.branch }}-frenglish-translations
-          gh pr create --base ${{ steps.branch-name.outputs.branch }} --head ${{ steps.branch-name.outputs.branch }}-frenglish-translations --title "Frenglish Translation Update for ${{ steps.branch-name.outputs.branch }}" --body "This PR contains updated translations for the changed files in branch ${{ steps.branch-name.outputs.branch }}."
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: Add translated files
+          title: "Frenglish Translation Update for ${{ steps.branch-name.outputs.branch }}"
+          body: "This PR contains updated translations for the changed files in branch ${{ steps.branch-name.outputs.branch }}."
+          branch: ${{ steps.branch-name.outputs.branch }}-frenglish-translations
+          base: ${{ steps.branch-name.outputs.branch }}
