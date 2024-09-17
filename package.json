@@ -1,13 +1,17 @@
 {
-    "name": "frenglish-sdk",
-    "version": "0.3.0",
+    "name": "frenglish",
+    "version": "1.0.0",
     "description": "SDK for Frenglish translation service",
-    "main": "dist/index.js",
-    "types": "dist/index.d.ts",
+    "main": "dist/sdk/index.js",
+    "types": "dist/sdk/index.d.ts",
+    "bin": {
+        "frenglish-translate": "./dist/cli/index.js"
+    },
     "scripts": {
         "build": "tsc",
         "test": "jest",
-        "prepublishOnly": "npm run build"
+        "prepublishOnly": "npm run build",
+        "postbuild": "chmod +x ./dist/cli/index.js"
     },
     "keywords": [
         "translation",
@@ -24,5 +28,7 @@
         "ts-jest": "^27.0.0",
         "typescript": "^4.5.0"
     },
-    "dependencies": {}
+    "dependencies": {
+        "dotenv": "^16.4.5"
+    }
 }

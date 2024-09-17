@@ -1,6 +1,6 @@
-import { FRENGLISH_BACKEND_URL } from './config/config';
-import { RequestTranslationResponse, TranslationResponse } from './types/api';
-import { TranslationStatus } from './types/translation';
+import { FRENGLISH_BACKEND_URL } from '../config/config';
+import { RequestTranslationResponse, TranslationResponse } from '../types/api';
+import { TranslationStatus } from '../types/translation';
 
 class FrenglishSDK {
   private apiKey: string;
@@ -9,14 +9,17 @@ class FrenglishSDK {
     this.apiKey = apiKey;
   }
 
-  async registerWebhook(webhookUrl: string, projectID: number): Promise<void> {
+  async registerWebhook(webhookUrl: string): Promise<void> {
     const response = await fetch(`${FRENGLISH_BACKEND_URL}/api/webhook/register-webhook`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${this.apiKey}`,
       },
-      body: JSON.stringify({ webhookUrl, projectID, apiKey: this.apiKey }),
+      body: JSON.stringify({ 
+        webhookUrl,
+        apiKey: this.apiKey
+      }),
     });
 
     if (!response.ok) {
