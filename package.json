@@ -5,7 +5,8 @@
     "main": "dist/sdk/index.js",
     "types": "dist/sdk/index.d.ts",
     "bin": {
-        "frenglish-translate": "./dist/cli/index.js"
+        "frenglish-translate": "./dist/cli/translate.js",
+        "frenglish-upload": "./dist/cli/upload.js"
     },
     "scripts": {
         "build": "tsc",

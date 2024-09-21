@@ -64,6 +64,31 @@ class FrenglishSDK {
     }
   }
 
+  // Upload files to use as base comparison
+  async upload(files: Array<{ fileId: string, content: string }>) {
+    console.log('Attempting to upload to:', `${FRENGLISH_BACKEND_URL}/api/translation/upload-files`);
+    try {
+      const response = await fetch(`${FRENGLISH_BACKEND_URL}/api/translation/upload-files`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify({ files, apiKey: this.apiKey }),
+      });
+  
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to upload files: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+  
+      return await response.json();
+    } catch (error) {
+      console.error('Detailed upload error:', error);
+      throw error;
+    }
+  }
+
   // Polling request to get the translation status once completed
   async getTranslationStatus(translationId: number): Promise<TranslationStatus> {
     const response = await fetch(`${FRENGLISH_BACKEND_URL}/api/translation/get-status`, {
@@ -73,14 +98,14 @@ class FrenglishSDK {
         'Authorization': `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify({ translationId, apiKey: this.apiKey }),
-    });
+    })
 
     if (!response.ok) {
-      throw new Error('Failed to get translation status');
+      throw new Error('Failed to get translation status')
     }
 
-    const data = await response.json();
-    return data.status;
+    const data = await response.json()
+    return data.status
   }
 
   // Get the translation content (call this after the translation status is "COMPLETED")
@@ -92,15 +117,15 @@ class FrenglishSDK {
         'Authorization': `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify({ translationId, apiKey: this.apiKey }),
-    });
+    })
 
     if (!response.ok) {
       throw new Error('Failed to get translation');
     }
 
-    const data = await response.json();
-    return data;
+    const data = await response.json()
+    return data
   }
 }
 
-export default FrenglishSDK;
+export default FrenglishSDK
