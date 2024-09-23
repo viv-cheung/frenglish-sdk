@@ -1,39 +1,39 @@
-#!/usr/bin/env node
-
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import dotenv from 'dotenv';
 import FrenglishSDK from '../sdk';
-import yargs from 'yargs';
-import { hideBin } from 'yargs/helpers';
 
 dotenv.config();
 
 const ORIGIN_LANGUAGE_DIR = process.env.ORIGIN_LANGUAGE_TRANSLATION_PATH!;
 const FRENGLISH_API_KEY = process.env.FRENGLISH_API_KEY;
 
-const argv = yargs(hideBin(process.argv))
-  .option('path', {
-    type: 'string',
-    description: 'Specify a custom path for translation (overrides ORIGIN_LANGUAGE_DIR)',
-    default: ORIGIN_LANGUAGE_DIR
-  })
-  .parse();
-
 async function getFilesToTranslate(customPath: string): Promise<string[]> {
-  const targetDir = customPath || ORIGIN_LANGUAGE_DIR;
-  console.log(`Translating all files in: ${targetDir}`);
-  const allFiles = await fs.readdir(targetDir);
-  return allFiles.map(file => path.join(targetDir, file));
+  try {
+    const stats = await fs.stat(customPath);
+    if (stats.isDirectory()) {
+      console.log(`Translating all files in directory: ${customPath}`);
+      const allFiles = await fs.readdir(customPath);
+      return allFiles.map(file => path.join(customPath, file));
+    } else if (stats.isFile()) {
+      console.log(`Translating single file: ${customPath}`);
+      return [customPath];
+    } else {
+      throw new Error(`Invalid path: ${customPath}`);
+    }
+  } catch (error) {
+    console.error(`Error accessing path ${customPath}:`, error);
+    return [];
+  }
 }
 
-async function createTranslation() {
+export async function translate(customPath: string) {
   try {
     if (!FRENGLISH_API_KEY) {
       throw new Error('FRENGLISH_API_KEY environment variable is not set');
     }
 
-    const filesToTranslate = await getFilesToTranslate(argv.path);
+    const filesToTranslate = await getFilesToTranslate(customPath);
 
     if (filesToTranslate.length === 0) {
       console.log('No files to translate');
@@ -41,12 +41,24 @@ async function createTranslation() {
     }
 
     const fileContents = await Promise.all(filesToTranslate.map(async (file) => {
-      const content = await fs.readFile(file, 'utf-8');
-      return { fileId: path.basename(file), content };
+      try {
+        const content = await fs.readFile(file, 'utf-8');
+        return { fileId: path.basename(file), content };
+      } catch (error) {
+        console.error(`Error reading file ${file}:`, error);
+        return null;
+      }
     }));
 
-    const fileIDs = fileContents.map(file => file.fileId);
-    const contents = fileContents.map(file => file.content);
+    const validFileContents = fileContents.filter((file): file is { fileId: string; content: string } => file !== null);
+
+    if (validFileContents.length === 0) {
+      console.log('No valid files to translate after reading.');
+      return;
+    }
+
+    const fileIDs = validFileContents.map(file => file.fileId);
+    const contents = validFileContents.map(file => file.content);
 
     console.log('Files to translate:', fileIDs);
     console.log('Uploading files and creating translation...');
@@ -69,7 +81,7 @@ async function createTranslation() {
     
           const originalFile = filesToTranslate.find(file => path.basename(file) === translatedFile.fileId);
           if (originalFile) {
-            const translatedFilePath = originalFile.replace(argv.path, path.join(path.dirname(argv.path), language));
+            const translatedFilePath = originalFile.replace(customPath, path.join(path.dirname(customPath), language));
             await fs.mkdir(path.dirname(translatedFilePath), { recursive: true });
             
             if (translatedFile.content.length > 0) {
@@ -92,4 +104,30 @@ async function createTranslation() {
   }
 }
 
-createTranslation();
+// CLI-specific code
+if (require.main === module) {
+  import('yargs').then(({ default: yargs }) => {
+    const argv = yargs(process.argv.slice(2))
+      .usage('Usage: $0 <command> [options]')
+      .command('translate', 'Translate files', {
+        path: {
+          type: 'string',
+          description: 'Specify a custom path for translation (file or directory, overrides TRANSLATION_PATH)',
+          default: ORIGIN_LANGUAGE_DIR
+        }
+      })
+      .example('$0 translate', 'Translate files using the default TRANSLATION_PATH')
+      .example('$0 translate --path "./custom/path/file.json"', 'Translate a specific JSON file')
+      .example('$0 translate --path "./custom/path"', 'Translate all files in a custom directory')
+      .help('h')
+      .alias('h', 'help')
+      .epilog('For more information, visit https://www.frenglish.ai')
+      .parse();
+
+    if (argv._.includes('translate')) {
+      translate(argv.path as string);
+    } else {
+      yargs.showHelp();
+    }
+  });
+}

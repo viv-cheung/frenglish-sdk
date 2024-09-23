@@ -1,44 +1,40 @@
-#!/usr/bin/env node
-
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import dotenv from 'dotenv';
 import FrenglishSDK from '../sdk';
-import yargs from 'yargs';
-import { hideBin } from 'yargs/helpers';
 import fg from 'fast-glob';
 import { FileContentWithLanguage } from 'src/types/api';
 
 dotenv.config();
 
+const TRANSLATION_PATH = process.env.TRANSLATION_PATH!;
 const FRENGLISH_API_KEY = process.env.FRENGLISH_API_KEY;
-const argv = yargs(hideBin(process.argv))
-  .option('path', {
-    type: 'array', // Changed from 'string' to 'array'
-    description: 'Specify custom paths or glob patterns for uploading files',
-    demandOption: true
-  })
-  .parse();
 
-const customPathInputs: string[] = argv.path as string[];
-
-// Function to resolve paths using fast-glob
 async function resolvePaths(inputs: string[]): Promise<string[]> {
   const resolvedPaths: string[] = [];
 
   for (const input of inputs) {
-    const matches = await fg(input, {
-      onlyDirectories: true, // Only match directories
-      unique: true,          // Ensure unique paths
-      caseSensitiveMatch: false,
-      absolute: true          // Return absolute paths
-    });
+    try {
+      const stats = await fs.stat(input);
+      if (stats.isDirectory()) {
+        resolvedPaths.push(input);
+      } else {
+        const matches = await fg(input, {
+          onlyFiles: false,
+          unique: true,
+          caseSensitiveMatch: false,
+          absolute: true
+        });
 
-    if (matches.length === 0) {
-      console.warn(`No matches found for pattern: ${input}`);
+        if (matches.length === 0) {
+          console.warn(`No matches found for pattern: ${input}`);
+        }
+
+        resolvedPaths.push(...matches);
+      }
+    } catch (error) {
+      console.error(`Error resolving path ${input}:`, error);
     }
-
-    resolvedPaths.push(...matches);
   }
 
   return resolvedPaths;
@@ -47,33 +43,27 @@ async function resolvePaths(inputs: string[]): Promise<string[]> {
 async function getFilesToUpload(customPaths: string[], supportedLanguages: string[]): Promise<string[]> {
   const allFiles: string[] = [];
 
-  // Helper function to traverse directories recursively
-  async function traverseDirectory(currentPath: string) {
+  async function traverseDirectory(currentPath: string, isRoot: boolean = true) {
     try {
       const stats = await fs.stat(currentPath);
       if (stats.isDirectory()) {
-        const langCode = path.basename(currentPath).toLowerCase();
-        // Check if the current directory is a supported language
-        if (supportedLanguages.includes(langCode)) {
-          console.log(`Scanning for files in: ${currentPath}`);
+        const dirName = path.basename(currentPath).toLowerCase();
+        if (supportedLanguages.includes(dirName) || isRoot) {
           const entries = await fs.readdir(currentPath, { withFileTypes: true });
           for (const entry of entries) {
             const entryPath = path.join(currentPath, entry.name);
             if (entry.isDirectory()) {
-              // Recursively traverse subdirectories
-              await traverseDirectory(entryPath);
-            } else if (entry.isFile()) {
+              await traverseDirectory(entryPath, false);
+            } else if (entry.isFile() && supportedLanguages.includes(path.basename(path.dirname(entryPath)).toLowerCase())) {
               allFiles.push(entryPath);
             }
           }
         } else {
-          // If the directory is not a supported language, skip it
           console.log(`Skipping unsupported language directory: ${currentPath}`);
         }
       } else if (stats.isFile()) {
-        // If it's a file directly under the custom path
-        const targetLanguage = extractTargetLanguage(currentPath, supportedLanguages);
-        if (supportedLanguages.includes(targetLanguage)) {
+        const parentDir = path.basename(path.dirname(currentPath)).toLowerCase();
+        if (supportedLanguages.includes(parentDir)) {
           allFiles.push(currentPath);
         }
       }
@@ -82,7 +72,6 @@ async function getFilesToUpload(customPaths: string[], supportedLanguages: strin
     }
   }
 
-  // Start traversing each custom path
   for (const customPath of customPaths) {
     await traverseDirectory(customPath);
   }
@@ -98,7 +87,7 @@ function extractTargetLanguage(filePath: string, supportedLanguages: string[]): 
   return langIndex !== -1 ? parts[langIndex].toLowerCase() : 'unknown';
 }
 
-async function uploadFiles() {
+export async function upload(customPathInputs: string[] = [TRANSLATION_PATH]) {
   try {
     if (!FRENGLISH_API_KEY) {
       throw new Error('FRENGLISH_API_KEY environment variable is not set');
@@ -106,11 +95,8 @@ async function uploadFiles() {
 
     const frenglishSDK = new FrenglishSDK(FRENGLISH_API_KEY);
 
-    console.log('Fetching supported languages...');
     const supportedLanguages = await frenglishSDK.getSupportedLanguages();
-    console.log('Supported languages:', supportedLanguages);
 
-    // Resolve glob patterns to actual paths
     const resolvedPaths = await resolvePaths(customPathInputs);
 
     if (resolvedPaths.length === 0) {
@@ -137,11 +123,10 @@ async function uploadFiles() {
         } as FileContentWithLanguage;
       } catch (readError) {
         console.error(`Error reading file ${file}:`, readError);
-        return null; // Exclude this file from upload
+        return null;
       }
     }));
 
-    // Type Predicate to filter out nulls
     const validFileContents: FileContentWithLanguage[] = fileContents.filter(
       (file): file is FileContentWithLanguage => file !== null
     );
@@ -166,4 +151,29 @@ async function uploadFiles() {
   }
 }
 
-uploadFiles();
+// CLI-specific code
+if (require.main === module) {
+  import('yargs').then(({ default: yargs }) => {
+    const argv = yargs(process.argv.slice(2))
+      .usage('Usage: $0 <command> [options]')
+      .command('upload', 'Upload files for translation', {
+        path: {
+          type: 'array',
+          description: 'Specify custom paths or glob patterns for uploading files (overrides TRANSLATION_PATH)',
+          default: [TRANSLATION_PATH]
+        }
+      })
+      .example('$0 upload', 'Upload files using the default TRANSLATION_PATH')
+      .example('$0 upload --path ./src/locales/**/*.json', 'Upload JSON files from a custom directory')
+      .help('h')
+      .alias('h', 'help')
+      .epilog('For more information, visit https://www.frenglish.ai')
+      .parse();
+
+    if (argv._.includes('upload')) {
+      upload(argv.path as string[]);
+    } else {
+      yargs.showHelp();
+    }
+  });
+}
