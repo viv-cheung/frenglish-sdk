@@ -1,5 +1,5 @@
 import { FRENGLISH_BACKEND_URL } from '../config/config';
-import { RequestTranslationResponse, TranslationResponse } from '../types/api';
+import { FileContentWithLanguage, RequestTranslationResponse, TranslationResponse } from '../types/api';
 import { TranslationStatus } from '../types/translation';
 
 class FrenglishSDK {
@@ -65,7 +65,7 @@ class FrenglishSDK {
   }
 
   // Upload files to use as base comparison
-  async upload(files: Array<{ fileId: string, content: string }>) {
+  async upload(files: FileContentWithLanguage[]) {
     console.log('Attempting to upload to:', `${FRENGLISH_BACKEND_URL}/api/translation/upload-files`);
     try {
       const response = await fetch(`${FRENGLISH_BACKEND_URL}/api/translation/upload-files`, {
@@ -85,6 +85,28 @@ class FrenglishSDK {
       return await response.json();
     } catch (error) {
       console.error('Detailed upload error:', error);
+      throw error;
+    }
+  }
+
+  // Get supported languages
+  async getSupportedLanguages() {
+    try {
+      const response = await fetch(`${FRENGLISH_BACKEND_URL}/api/translation/supported-languages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to get supported languages: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting supported languages:', error);
       throw error;
     }
   }
