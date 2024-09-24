@@ -1,3 +1,4 @@
+import { Configuration } from 'src/types/configuration';
 import { FRENGLISH_BACKEND_URL } from '../config/config';
 import { FileContentWithLanguage, RequestTranslationResponse, TranslationResponse } from '../types/api';
 import { TranslationStatus } from '../types/translation';
@@ -107,6 +108,51 @@ class FrenglishSDK {
       return await response.json();
     } catch (error) {
       console.error('Error getting supported languages:', error);
+      throw error;
+    }
+  }
+
+  // Get supported file types
+  async getSupportedFileTypes() {
+    try {
+      const response = await fetch(`${FRENGLISH_BACKEND_URL}/api/translation/supported-file-types`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to get supported file types: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting supported file types:', error);
+      throw error;
+    }
+  }
+
+  // Get supported file types
+  async getDefaultConfiguration(): Promise<Configuration> {
+    try {
+      const response = await fetch(`${FRENGLISH_BACKEND_URL}/api/configuration/get-default-configuration`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ apiKey: this.apiKey }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to get default configuration: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting default configuration:', error);
       throw error;
     }
   }

@@ -2,88 +2,61 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import dotenv from 'dotenv';
 import FrenglishSDK from '../sdk';
+import { findLanguageFiles, getRelativePath, readFiles } from './utils';
 
 dotenv.config();
 
 const ORIGIN_LANGUAGE_DIR = process.env.ORIGIN_LANGUAGE_TRANSLATION_PATH!;
 const FRENGLISH_API_KEY = process.env.FRENGLISH_API_KEY;
+const TRANSLATION_PATH = process.env.TRANSLATION_PATH!;
 
-async function getFilesToTranslate(customPath: string): Promise<string[]> {
-  try {
-    const stats = await fs.stat(customPath);
-    if (stats.isDirectory()) {
-      console.log(`Translating all files in directory: ${customPath}`);
-      const allFiles = await fs.readdir(customPath);
-      return allFiles.map(file => path.join(customPath, file));
-    } else if (stats.isFile()) {
-      console.log(`Translating single file: ${customPath}`);
-      return [customPath];
-    } else {
-      throw new Error(`Invalid path: ${customPath}`);
-    }
-  } catch (error) {
-    console.error(`Error accessing path ${customPath}:`, error);
-    return [];
-  }
-}
-
-export async function translate(customPath: string) {
+export async function translate(customPath: string = TRANSLATION_PATH) {
   try {
     if (!FRENGLISH_API_KEY) {
       throw new Error('FRENGLISH_API_KEY environment variable is not set');
     }
 
-    const filesToTranslate = await getFilesToTranslate(customPath);
+    const frenglish = new FrenglishSDK(FRENGLISH_API_KEY);
+
+    // Find all files to translate using glob
+    const originLanguage = (await frenglish.getDefaultConfiguration()).originLanguage
+    const supportedFileTypes = await frenglish.getSupportedFileTypes()
+    const languageFiles = await findLanguageFiles(customPath, [originLanguage], supportedFileTypes); 
+
+    // Flatten the languageFiles map into a single array of file paths
+    const filesToTranslate = Array.from(languageFiles.values()).flat();
 
     if (filesToTranslate.length === 0) {
-      console.log('No files to translate');
+      console.log('No files found to translate.');
       return;
     }
 
-    const fileContents = await Promise.all(filesToTranslate.map(async (file) => {
-      try {
-        const content = await fs.readFile(file, 'utf-8');
-        return { fileId: path.basename(file), content };
-      } catch (error) {
-        console.error(`Error reading file ${file}:`, error);
-        return null;
-      }
-    }));
+    const fileContents = await readFiles(filesToTranslate);
 
-    const validFileContents = fileContents.filter((file): file is { fileId: string; content: string } => file !== null);
-
-    if (validFileContents.length === 0) {
+    if (fileContents.length === 0) {
       console.log('No valid files to translate after reading.');
       return;
     }
 
-    const fileIDs = validFileContents.map(file => file.fileId);
-    const contents = validFileContents.map(file => file.content);
+    // We get relative path
+    const fileIDs = fileContents.map(file => getRelativePath(customPath, file.fileId, 'en'));
+    const contents = fileContents.map(file => file.content);
 
     console.log('Files to translate:', fileIDs);
     console.log('Uploading files and creating translation...');
 
-    const translationSDK = new FrenglishSDK(FRENGLISH_API_KEY);
-    
-    const translationResponse = await translationSDK.translate(fileIDs as [], contents as []);
+    const translationResponse = await frenglish.translate(fileIDs as [], contents as []);
 
     if (translationResponse && translationResponse.content) {
       for (const languageData of translationResponse.content) {
         const language = languageData.language;
         const translatedFiles = languageData.files;
-    
-        console.log(`Processing language: ${language}`);
-        console.log(`Number of translated files: ${translatedFiles.length}`);
-    
         for (const translatedFile of translatedFiles) {
-          console.log(`Processing file: ${translatedFile.fileId}`);
-          console.log(`File content length: ${translatedFile.content.length}`);
     
-          const originalFile = filesToTranslate.find(file => path.basename(file) === translatedFile.fileId);
+          const originalFile = fileIDs.find(file => file === translatedFile.fileId);
           if (originalFile) {
-            const translatedFilePath = originalFile.replace(customPath, path.join(path.dirname(customPath), language));
+            const translatedFilePath = path.join(customPath, language, originalFile)
             await fs.mkdir(path.dirname(translatedFilePath), { recursive: true });
-            
             if (translatedFile.content.length > 0) {
               await fs.writeFile(translatedFilePath, translatedFile.content, 'utf8');
               console.log(`Translated file written: ${translatedFilePath}`);
