@@ -1,9 +1,9 @@
 /**
  // Example client usage:
- npm install frenglish-sdk
+ npm install frenglish
 
 // Import the Frenglish SDK
-const FrenglishSDK = require('frenglish-sdk');
+const FrenglishSDK = require('frenglish');
 
 // Initialize the SDK with the API key
 const apiKey = 'your-frenglish-api-key-here';
