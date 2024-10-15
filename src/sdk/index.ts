@@ -30,7 +30,7 @@ class FrenglishSDK {
   }
 
   // Send a translation request to Frenglish!
-  async translate(filenames: [], content: []): Promise<RequestTranslationResponse | undefined> {
+  async translate(filenames: [], content: [], fullTranslation: boolean = false): Promise<RequestTranslationResponse | undefined> {
     const POLLING_INTERVAL = 5000 // 5 seconds
     const MAX_POLLING_TIME = 1800000 // 30 minutes  
     const startTime = Date.now()
@@ -42,7 +42,7 @@ class FrenglishSDK {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${this.apiKey}`,
       },
-      body: JSON.stringify({ filenames, content, apiKey: this.apiKey }),
+      body: JSON.stringify({ filenames, content, apiKey: this.apiKey, fullTranslation }),
     });
   
     if (!response.ok) {

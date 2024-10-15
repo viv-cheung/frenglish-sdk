@@ -10,7 +10,7 @@ const ORIGIN_LANGUAGE_DIR = process.env.ORIGIN_LANGUAGE_TRANSLATION_PATH!;
 const FRENGLISH_API_KEY = process.env.FRENGLISH_API_KEY;
 const TRANSLATION_PATH = process.env.TRANSLATION_PATH!;
 
-export async function translate(customPath: string = TRANSLATION_PATH) {
+export async function translate(customPath: string = TRANSLATION_PATH, isFullTranslation: boolean = false) {
   try {
     if (!FRENGLISH_API_KEY) {
       throw new Error('FRENGLISH_API_KEY environment variable is not set');
@@ -44,8 +44,9 @@ export async function translate(customPath: string = TRANSLATION_PATH) {
 
     console.log('Files to translate:', fileIDs);
     console.log('Uploading files and creating translation...');
+    console.log('Is full translation:', isFullTranslation);
 
-    const translationResponse = await frenglish.translate(fileIDs as [], contents as []);
+    const translationResponse = await frenglish.translate(fileIDs as [], contents as [], isFullTranslation);
 
     if (translationResponse && translationResponse.content) {
       for (const languageData of translationResponse.content) {
@@ -87,18 +88,25 @@ if (require.main === module) {
           type: 'string',
           description: 'Specify a custom path for translation (file or directory, overrides TRANSLATION_PATH)',
           default: ORIGIN_LANGUAGE_DIR
+        },
+        isFullTranslation: {
+          type: 'boolean',
+          description: 'Perform a full translation instead of just comparing with existing translation files',
+          default: false
         }
       })
       .example('$0 translate', 'Translate files using the default TRANSLATION_PATH')
       .example('$0 translate --path "./custom/path/file.json"', 'Translate a specific JSON file')
       .example('$0 translate --path "./custom/path"', 'Translate all files in a custom directory')
+      .example('$0 translate --isFullTranslation=true', 'Perform a full translation on all files in directory specified by TRANSLATION_PATH')
+      .example('$0 translate --path "./custom/path" --isFullTranslation=true', 'Perform a full translation on files in a custom directory')
       .help('h')
       .alias('h', 'help')
       .epilog('For more information, visit https://www.frenglish.ai')
       .parse();
 
     if (argv._.includes('translate')) {
-      translate(argv.path as string);
+      translate(argv.path as string, argv.isFullTranslation as boolean);
     } else {
       yargs.showHelp();
     }

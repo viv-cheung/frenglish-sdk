@@ -1,7 +1,7 @@
 const { execSync } = require('child_process');
 const fs = require('fs').promises;
 const path = require('path');
-const FrenglishSDK = require('frenglish-sdk').default;
+const FrenglishSDK = require('frenglish').default;
 
 const ORIGIN_LANGUAGE_DIR = 'src/locales/en';  // Adjust this to your origin language directory
 const FRENGLISH_API_KEY = process.env.FRENGLISH_API_KEY;
