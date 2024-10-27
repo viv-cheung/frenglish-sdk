@@ -30,7 +30,7 @@ class FrenglishSDK {
   }
 
   // Send a translation request to Frenglish!
-  async translate(content: [], fullTranslation: boolean = false, filenames: []): Promise<RequestTranslationResponse | undefined> {
+  async translate(content: string[], fullTranslation: boolean = false, filenames: string[] = []): Promise<RequestTranslationResponse | undefined> {
     const POLLING_INTERVAL = 5000 // 5 seconds
     const MAX_POLLING_TIME = 1800000 // 30 minutes  
     const startTime = Date.now()
