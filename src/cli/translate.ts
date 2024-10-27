@@ -46,7 +46,7 @@ export async function translate(customPath: string = TRANSLATION_PATH, isFullTra
     console.log('Uploading files and creating translation...');
     console.log('Is full translation:', isFullTranslation);
 
-    const translationResponse = await frenglish.translate(fileIDs as [], contents as [], isFullTranslation);
+    const translationResponse = await frenglish.translate(contents as [], isFullTranslation, fileIDs as []);
 
     if (translationResponse && translationResponse.content) {
       for (const languageData of translationResponse.content) {

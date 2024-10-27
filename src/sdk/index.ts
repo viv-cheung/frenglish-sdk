@@ -30,10 +30,15 @@ class FrenglishSDK {
   }
 
   // Send a translation request to Frenglish!
-  async translate(filenames: [], content: [], fullTranslation: boolean = false): Promise<RequestTranslationResponse | undefined> {
+  async translate(content: string[], fullTranslation: boolean = false, filenames: string[] = []): Promise<RequestTranslationResponse | undefined> {
     const POLLING_INTERVAL = 5000 // 5 seconds
     const MAX_POLLING_TIME = 1800000 // 30 minutes  
     const startTime = Date.now()
+
+    const body: any = { content, apiKey: this.apiKey, fullTranslation };
+    if (filenames && filenames.length > 0) {
+      body.filenames = filenames
+    }
 
     // Sending translation request
     const response = await fetch(`${FRENGLISH_BACKEND_URL}/api/translation/request-translation`, {
@@ -42,11 +47,11 @@ class FrenglishSDK {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${this.apiKey}`,
       },
-      body: JSON.stringify({ filenames, content, apiKey: this.apiKey, fullTranslation }),
+      body: JSON.stringify(body),
     });
   
     if (!response.ok) {
-      throw new Error(`Failed to request translation: ${response}`);
+      throw new Error(`Failed to request translation: ${JSON.stringify(response)}`);
     }
 
     const data: RequestTranslationResponse = await response.json()

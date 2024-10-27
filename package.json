@@ -5,7 +5,7 @@
     "main": "dist/sdk/index.js",
     "types": "dist/sdk/index.d.ts",
     "bin": {
-        "frenglish": "./dist/cli/index.js"
+        "frenglish": "dist/cli/index.js"
     },
     "scripts": {
         "build": "tsc",
@@ -30,7 +30,6 @@
     },
     "dependencies": {
         "dotenv": "^16.4.5",
-        "fast-glob": "^3.3.2",
         "glob-promise": "^6.0.7",
         "yargs": "^17.7.2"
     }

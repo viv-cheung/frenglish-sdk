@@ -22,10 +22,6 @@ async function getChangedFiles() {
     console.log('Error getting changed files:', error.message);
     console.log('Falling back to all files in the origin language directory.');
   }
-
-  // Fallback: get all files in the origin language directory
-  const allFiles = execSync(`find ${ORIGIN_LANGUAGE_DIR} -type f`).toString().trim().split('\n');
-  return allFiles;
 }
 
 async function main() {
@@ -46,7 +42,7 @@ async function main() {
     const contents = fileContents.map(file => file.content);
     
     // Adjust the translate call based on the SDK's expected parameters
-    const translation = await frenglish.translate(filenames, contents);
+    const translation = await frenglish.translate(contents, false, filenames);
     console.log(`Translation requested with ID: ${translation.translationId}`);
 
     for (const languageData of translation.content) {
@@ -66,7 +62,7 @@ async function main() {
       }
     }
   } catch (error) {
-    console.error('Error during translation process:', error);
+    console.error('Error during translation process:', JSON.stringify(error));
     if (error.response) {
       console.error('Response status:', error.response.status);
       console.error('Response data:', await error.response.text());
