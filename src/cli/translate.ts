@@ -6,7 +6,6 @@ import { findLanguageFiles, getRelativePath, readFiles } from './utils';
 
 dotenv.config();
 
-const ORIGIN_LANGUAGE_DIR = process.env.ORIGIN_LANGUAGE_TRANSLATION_PATH!;
 const FRENGLISH_API_KEY = process.env.FRENGLISH_API_KEY;
 const TRANSLATION_PATH = process.env.TRANSLATION_PATH!;
 
@@ -21,7 +20,7 @@ export async function translate(customPath: string = TRANSLATION_PATH, isFullTra
     // Find all files to translate using glob
     const originLanguage = (await frenglish.getDefaultConfiguration()).originLanguage
     const supportedFileTypes = await frenglish.getSupportedFileTypes()
-    const languageFiles = await findLanguageFiles(customPath, [originLanguage], supportedFileTypes); 
+    const languageFiles = await findLanguageFiles(customPath, [originLanguage], supportedFileTypes);
 
     // Flatten the languageFiles map into a single array of file paths
     const filesToTranslate = Array.from(languageFiles.values()).flat();
@@ -76,39 +75,4 @@ export async function translate(customPath: string = TRANSLATION_PATH, isFullTra
   } catch (error) {
     console.error('Error:', error);
   }
-}
-
-// CLI-specific code
-if (require.main === module) {
-  import('yargs').then(({ default: yargs }) => {
-    const argv = yargs(process.argv.slice(2))
-      .usage('Usage: $0 <command> [options]')
-      .command('translate', 'Translate files', {
-        path: {
-          type: 'string',
-          description: 'Specify a custom path for translation (file or directory, overrides TRANSLATION_PATH)',
-          default: ORIGIN_LANGUAGE_DIR
-        },
-        isFullTranslation: {
-          type: 'boolean',
-          description: 'Perform a full translation instead of just comparing with existing translation files',
-          default: false
-        }
-      })
-      .example('$0 translate', 'Translate files using the default TRANSLATION_PATH')
-      .example('$0 translate --path "./custom/path/file.json"', 'Translate a specific JSON file')
-      .example('$0 translate --path "./custom/path"', 'Translate all files in a custom directory')
-      .example('$0 translate --isFullTranslation=true', 'Perform a full translation on all files in directory specified by TRANSLATION_PATH')
-      .example('$0 translate --path "./custom/path" --isFullTranslation=true', 'Perform a full translation on files in a custom directory')
-      .help('h')
-      .alias('h', 'help')
-      .epilog('For more information, visit https://www.frenglish.ai')
-      .parse();
-
-    if (argv._.includes('translate')) {
-      translate(argv.path as string, argv.isFullTranslation as boolean);
-    } else {
-      yargs.showHelp();
-    }
-  });
 }
