@@ -1,6 +1,7 @@
 import { Configuration } from 'src/types/configuration';
 import { FRENGLISH_BACKEND_URL } from '../config/config';
 import { FileContentWithLanguage, RequestTranslationResponse, TranslationResponse } from '../types/api';
+import { File } from '../types/file'
 import { TranslationStatus } from '../types/translation';
 
 class FrenglishSDK {
@@ -68,6 +69,86 @@ class FrenglishSDK {
       // If not completed, wait before checking again
       await new Promise(resolve => setTimeout(resolve, POLLING_INTERVAL))
     }
+  }
+
+  // Send a translation string request to Frenglish and receive a string response
+  async translateString(content: string, lang: string): Promise<String | undefined> {
+    const POLLING_INTERVAL = 5000 // 5 seconds
+    const MAX_POLLING_TIME = 1800000 // 30 minutes  
+    const startTime = Date.now()
+
+    const body: any = { content, apiKey: this.apiKey, lang };
+    const supportedLanguagesResponse = await fetch(`${FRENGLISH_BACKEND_URL}/api/translation/supported-languages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!supportedLanguagesResponse.ok) {
+      throw new Error('Failed to get supported languages');
+    }
+
+    const supportedLanguages = await supportedLanguagesResponse.json();
+
+    if (!supportedLanguages.includes(lang)) {
+      throw new Error(`Language '${lang}' is not supported. Supported languages are: ${supportedLanguages.join(', ')}`);
+    }
+
+    // Sending translation request
+    const translationResponse = await fetch(`${FRENGLISH_BACKEND_URL}/api/translation/request-translation-string`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify(body),
+    });
+  
+    if (!translationResponse.ok) {
+      throw new Error(`Failed to request translation: ${JSON.stringify(translationResponse)}`);
+    }
+
+    const data: RequestTranslationResponse = await translationResponse.json()
+    while (Date.now() - startTime < MAX_POLLING_TIME) {
+      const translationStatus = await this.getTranslationStatus(data.translationId)
+      if (translationStatus === TranslationStatus.COMPLETED) {
+        const content = await this.getTranslationContent(data.translationId)
+        // Extract just the translated text
+        const translatedContent = content[0]?.files[0]?.content
+        if (translatedContent) {
+          const parsedContent = JSON.parse(translatedContent)
+          return Object.values(parsedContent)[0] as string
+        }
+        return undefined
+      } else if (translationStatus === TranslationStatus.CANCELLED) { 
+        throw new Error('Translation cancelled')
+      }
+
+      // If not completed, wait before checking again
+      await new Promise(resolve => setTimeout(resolve, POLLING_INTERVAL))
+    }
+  }
+
+  // Get text map for your projects
+  async getTextMap(targetLanguage: string): Promise<File | null> {
+    const body: any = { apiKey: this.apiKey, targetLanguage };
+
+    // Sending translation request
+    const response = await fetch(`${FRENGLISH_BACKEND_URL}/api/project/request-text-map`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to request text map: ${JSON.stringify(response)}`);
+    }
+
+    return response.json()
   }
 
   // Upload files to use as base comparison
