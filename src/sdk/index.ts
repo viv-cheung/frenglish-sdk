@@ -34,7 +34,7 @@ class FrenglishSDK {
   async translate(content: string[], fullTranslation: boolean = false, filenames: string[] = []): Promise<RequestTranslationResponse | undefined> {
     const POLLING_INTERVAL = 5000 // 5 seconds
     const MAX_POLLING_TIME = 1800000 // 30 minutes  
-    const startTime = Date.now()
+    const startTime = Date.now() - POLLING_INTERVAL
 
     const body: any = { content, apiKey: this.apiKey, fullTranslation };
     if (filenames && filenames.length > 0) {
@@ -50,11 +50,9 @@ class FrenglishSDK {
       },
       body: JSON.stringify(body),
     });
-  
     if (!response.ok) {
       throw new Error(`Failed to request translation: ${JSON.stringify(response)}`);
     }
-
     const data: RequestTranslationResponse = await response.json()
     while (Date.now() - startTime < MAX_POLLING_TIME) {
       const translationStatus = await this.getTranslationStatus(data.translationId)
