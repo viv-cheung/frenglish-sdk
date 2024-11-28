@@ -31,11 +31,11 @@ class FrenglishSDK {
   }
 
   // Send a translation request to Frenglish!
-  async translate(content: string[], fullTranslation: boolean = false, filenames: string[] = []): Promise<RequestTranslationResponse | undefined> {
-    const POLLING_INTERVAL = 5000 // 5 seconds
+  async translate(content: string[], fullTranslation: boolean = false, filenames: string[] = []): 
+  Promise<RequestTranslationResponse | undefined> {
+    const POLLING_INTERVAL = 500 // 5 seconds
     const MAX_POLLING_TIME = 1800000 // 30 minutes  
     const startTime = Date.now() - POLLING_INTERVAL
-
     const body: any = { content, apiKey: this.apiKey, fullTranslation };
     if (filenames && filenames.length > 0) {
       body.filenames = filenames
@@ -71,9 +71,9 @@ class FrenglishSDK {
 
   // Send a translation string request to Frenglish and receive a string response
   async translateString(content: string, lang: string): Promise<String | undefined> {
-    const POLLING_INTERVAL = 5000 // 5 seconds
+    const POLLING_INTERVAL = 500 // 5 seconds
     const MAX_POLLING_TIME = 1800000 // 30 minutes  
-    const startTime = Date.now()
+    const startTime = Date.now() - POLLING_INTERVAL
 
     const body: any = { content, apiKey: this.apiKey, lang };
     const supportedLanguagesResponse = await fetch(`${FRENGLISH_BACKEND_URL}/api/translation/supported-languages`, {
@@ -129,8 +129,8 @@ class FrenglishSDK {
   }
 
   // Get text map for your projects
-  async getTextMap(targetLanguage: string): Promise<File | null> {
-    const body: any = { apiKey: this.apiKey, targetLanguage };
+  async getTextMap(): Promise<File | null> {
+    const body: any = { apiKey: this.apiKey };
 
     // Sending translation request
     const response = await fetch(`${FRENGLISH_BACKEND_URL}/api/project/request-text-map`, {
