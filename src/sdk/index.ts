@@ -31,12 +31,12 @@ class FrenglishSDK {
   }
 
   // Send a translation request to Frenglish!
-  async translate(content: string[], fullTranslation: boolean = false, filenames: string[] = []): 
+  async translate(content: string[], isFullTranslation: boolean = false, filenames: string[] = []): 
   Promise<RequestTranslationResponse | undefined> {
     const POLLING_INTERVAL = 500 // 5 seconds
     const MAX_POLLING_TIME = 1800000 // 30 minutes  
     const startTime = Date.now() - POLLING_INTERVAL
-    const body: any = { content, apiKey: this.apiKey, fullTranslation };
+    const body: any = { content, apiKey: this.apiKey, isFullTranslation };
     if (filenames && filenames.length > 0) {
       body.filenames = filenames
     }
@@ -182,6 +182,7 @@ class FrenglishSDK {
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ apiKey: this.apiKey })
       });
 
       if (!response.ok) {
@@ -192,6 +193,29 @@ class FrenglishSDK {
       return await response.json();
     } catch (error) {
       console.error('Error getting supported languages:', error);
+      throw error;
+    }
+  }
+
+  // Get supported file types
+  async getPublicAPIKeyFromDomain(domain: string) {
+    try {
+      const response = await fetch(`${FRENGLISH_BACKEND_URL}/api/project/get-public-api-key-from-domain`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ domainURL: domain, apiKey: this.apiKey }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to get public API key from domain: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting public API key from domain:', error);
       throw error;
     }
   }
@@ -214,6 +238,29 @@ class FrenglishSDK {
       return await response.json();
     } catch (error) {
       console.error('Error getting supported file types:', error);
+      throw error;
+    }
+  }
+
+  async getProjectSupportedLanguages(): Promise<{ supportedLanguages: string[], originLanguage: string }> {
+    try {
+      const response = await fetch(`${FRENGLISH_BACKEND_URL}/api/configuration/get-project-supported-languages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify({ apiKey: this.apiKey }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to get supported languages: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting project supported languages:', error);
       throw error;
     }
   }
