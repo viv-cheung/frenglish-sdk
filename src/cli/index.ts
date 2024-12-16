@@ -21,10 +21,32 @@ yargs(hideBin(process.argv))
           type: 'boolean',
           description: 'Perform a full translation',
           default: false
+        })
+        .option('partialConfig', {
+          type: 'string',
+          description: 'Specify a partial configuration as JSON string or path to JSON file (e.g., \'{"key":"value"}\' or "./config.json")',
+          default: undefined,
+          coerce: (arg: string) => {
+            if (!arg) return undefined;
+            
+            try {
+              // First try to parse as JSON string
+              return JSON.parse(arg);
+            } catch {
+              // If parsing fails, try to read it as a file
+              try {
+                const fs = require('fs');
+                const content = fs.readFileSync(arg, 'utf8');
+                return JSON.parse(content);
+              } catch (e) {
+                throw new Error(`Failed to parse partialConfig: ${arg}. Must be valid JSON string or path to JSON file.`);
+              }
+            }
+          }
         });
     },
     handler: (argv: any) => {
-      translate(argv.path, argv.isFullTranslation);
+      translate(argv.path, argv.isFullTranslation, argv.partialConfig);
     }
   })
   .command('upload', 'Upload files for translation', (yargs) => {

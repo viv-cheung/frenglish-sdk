@@ -6,5 +6,10 @@ export interface Configuration {
     autoMergeToBaseBranch?: boolean,
     implicitRules?: ImplicitRule[],
     rulesPerLanguage: Rule[],
-    useThisConfig: boolean
+    useThisConfig: boolean,
+    keyFilters: Filter | null;
   }
+
+export type PartialConfiguration = {
+  [K in keyof Configuration]?: Configuration[K]
+}

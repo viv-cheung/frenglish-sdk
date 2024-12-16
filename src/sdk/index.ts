@@ -1,8 +1,9 @@
-import { Configuration } from 'src/types/configuration';
+import { Configuration, PartialConfiguration } from 'src/types/configuration';
 import { FRENGLISH_BACKEND_URL } from '../config/config';
 import { FileContentWithLanguage, RequestTranslationResponse, TranslationResponse } from '../types/api';
 import { File } from '../types/file'
 import { TranslationStatus } from '../types/translation';
+import { parsePartialConfig } from '../utils/files';
 
 class FrenglishSDK {
   private apiKey: string;
@@ -31,15 +32,13 @@ class FrenglishSDK {
   }
 
   // Send a translation request to Frenglish!
-  async translate(content: string[], isFullTranslation: boolean = false, filenames: string[] = []): 
+  async translate(content: string[], isFullTranslation: boolean = false, filenames: string[] = [], partialConfig: PartialConfiguration = {}): 
   Promise<RequestTranslationResponse | undefined> {
     const POLLING_INTERVAL = 500 // 5 seconds
     const MAX_POLLING_TIME = 1800000 // 30 minutes  
     const startTime = Date.now() - POLLING_INTERVAL
-    const body: any = { content, apiKey: this.apiKey, isFullTranslation };
-    if (filenames && filenames.length > 0) {
-      body.filenames = filenames
-    }
+    const parsedConfig = await parsePartialConfig(partialConfig);
+    const body: any = { content, apiKey: this.apiKey, isFullTranslation, filenames, partialConfig: parsedConfig };
 
     // Sending translation request
     const response = await fetch(`${FRENGLISH_BACKEND_URL}/api/translation/request-translation`, {
@@ -70,12 +69,13 @@ class FrenglishSDK {
   }
 
   // Send a translation string request to Frenglish and receive a string response
-  async translateString(content: string, lang: string): Promise<String | undefined> {
+  async translateString(content: string, lang: string, partialConfig: PartialConfiguration = {}): Promise<String | undefined> {
     const POLLING_INTERVAL = 500 // 5 seconds
     const MAX_POLLING_TIME = 1800000 // 30 minutes  
     const startTime = Date.now() - POLLING_INTERVAL
+    const parsedConfig = await parsePartialConfig(partialConfig);
 
-    const body: any = { content, apiKey: this.apiKey, lang };
+    const body: any = { content, apiKey: this.apiKey, lang, partialConfig: parsedConfig };
     const supportedLanguagesResponse = await fetch(`${FRENGLISH_BACKEND_URL}/api/translation/supported-languages`, {
       method: 'POST',
       headers: {

@@ -3,13 +3,14 @@ import * as path from 'path';
 import dotenv from 'dotenv';
 import FrenglishSDK from '../sdk';
 import { findLanguageFiles, getRelativePath, readFiles } from './utils';
+import { PartialConfiguration } from 'src/types/configuration';
 
 dotenv.config();
 
 const FRENGLISH_API_KEY = process.env.FRENGLISH_API_KEY;
 const TRANSLATION_PATH = process.env.TRANSLATION_PATH!;
 
-export async function translate(customPath: string = TRANSLATION_PATH, isFullTranslation: boolean = false) {
+export async function translate(customPath: string = TRANSLATION_PATH, isFullTranslation: boolean = false, partialConfig: PartialConfiguration = {}) {
   try {
     if (!FRENGLISH_API_KEY) {
       throw new Error('FRENGLISH_API_KEY environment variable is not set');
@@ -45,7 +46,7 @@ export async function translate(customPath: string = TRANSLATION_PATH, isFullTra
     console.log('Uploading files and creating translation...');
     console.log('Is full translation:', isFullTranslation);
 
-    const translationResponse = await frenglish.translate(contents as [], isFullTranslation, fileIDs as []);
+    const translationResponse = await frenglish.translate(contents as [], isFullTranslation, fileIDs as [], partialConfig);
 
     if (translationResponse && translationResponse.content) {
       for (const languageData of translationResponse.content) {
