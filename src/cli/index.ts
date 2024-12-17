@@ -68,6 +68,8 @@ yargs(hideBin(process.argv))
   .example('$0 upload --path ./custom/path', 'Upload files from a custom path')
   .example('$0 translate --isFullTranslation=true', 'Perform a full translation on all files in directory specified by TRANSLATION_PATH')
   .example('$0 translate --path "./custom/path" --isFullTranslation=true', 'Perform a full translation on files in a custom directory')
+  .example('$0 translate --partialConfig=\'{"targetLanguages":["fr","es"]}\'', 'Translate files with custom configuration')
+  .example('$0 translate --partialConfig="./src/configs/translationConfig.json"', 'Translate files using configuration from a JSON file')
   .epilog('For more information, visit https://www.frenglish.ai')
   .wrap(yargs.terminalWidth())
   .parse();
