@@ -7,8 +7,12 @@ dotenv.config();
 
 const TRANSLATION_PATH = process.env.TRANSLATION_PATH!;
 const FRENGLISH_API_KEY = process.env.FRENGLISH_API_KEY;
+const EXCLUDED_TRANSLATION_PATH = process.env.EXCLUDED_TRANSLATION_PATH 
+  ? JSON.parse(process.env.EXCLUDED_TRANSLATION_PATH.replace(/'/g, '"'))
+  : [];
 
-export async function upload(customPath: string = TRANSLATION_PATH) {
+export async function upload(customPath: string = TRANSLATION_PATH, excludePath: string[] = EXCLUDED_TRANSLATION_PATH
+) {
   try {
     if (!FRENGLISH_API_KEY) {
       throw new Error('FRENGLISH_API_KEY environment variable is not set');
@@ -19,18 +23,20 @@ export async function upload(customPath: string = TRANSLATION_PATH) {
     const supportedFileTypes = await frenglish.getSupportedFileTypes()
 
     // Find language files using glob
-    const languageFiles = await findLanguageFiles(customPath, supportedLanguages, supportedFileTypes);
+    const languageFiles = await findLanguageFiles(customPath, supportedLanguages, supportedFileTypes, excludePath);
     const filesToUpload: FileContentWithLanguage[] = [];
 
     // Process each language and its corresponding files
     for (const [language, files] of languageFiles.entries()) {
       if (supportedLanguages.includes(language)) {
         const fileContents = await readFiles(files);
-        const validatedFiles = fileContents.map((file) => ({
-          ...file,
-          language,
-          fileId: getRelativePath(customPath, file.fileId, language),
-        }));
+        const validatedFiles = fileContents
+          .map((file) => ({
+            ...file,
+            language,
+            fileId: getRelativePath(customPath, file.fileId),
+          }))
+          .filter((file): file is typeof file & { fileId: string } => file.fileId !== undefined);
 
         if (!validateFiles(validatedFiles)) {
           console.warn('Some files are invalid');

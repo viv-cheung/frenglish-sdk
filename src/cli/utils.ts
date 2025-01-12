@@ -1,7 +1,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import glob from 'glob-promise';
-
+import { minimatch } from 'minimatch';
 
 /**
  * Finds language files by detecting where in the path the language code occurs.
@@ -14,34 +14,51 @@ import glob from 'glob-promise';
 export async function findLanguageFiles(
   basePath: string,
   supportedLanguages: string[],
-  supportedFileTypes: string[]
+  supportedFileTypes: string[],
+  excludePath: string[] = []
 ): Promise<Map<string, string[]>> {
   const languageFiles = new Map<string, string[]>();
-
-  // Use glob to match only .json and .md files
   const fileTypes = supportedFileTypes.join(',')
   const pattern = `**/*.{${fileTypes}}`;
   const files = await glob(pattern, { cwd: basePath, absolute: true });
 
-  // Process each file to detect the language and store the full path, including basePath
-  files.forEach((file: string) => {
+  for (const file of files) {
     const relativeToBase = path.relative(basePath, file);
-    const absoluteParts = file.split(path.sep);
+    
+    const shouldExclude = excludePath.some(excludePattern => {
+      const normalizedFile = file.replace(/\\/g, '/');
+      const normalizedPattern = excludePattern.trim().replace(/\\/g, '/');
+      const cleanPattern = normalizedPattern.replace(/[\[\]'"`]/g, '');
 
-    // Check if any part of the absolute path contains a supported language
+      // If pattern contains glob characters (* or **), use minimatch
+      if (cleanPattern.includes('*')) {
+        return minimatch(normalizedFile, cleanPattern, {
+          dot: true,
+          matchBase: true,
+          nocase: true
+        });
+      }
+      
+      // Otherwise, use simple includes for exact path matching
+      return normalizedFile.includes(cleanPattern);
+    });
+
+    if (shouldExclude) {
+      continue;
+    }
+
+    const absoluteParts = file.split(path.sep);
     const language = absoluteParts.find(part => supportedLanguages.includes(part.toLowerCase()));
 
     if (language) {
-      // Keep the full path starting from basePath
       const fullPath = path.join(basePath, relativeToBase);
-
       if (languageFiles.has(language)) {
         languageFiles.get(language)!.push(fullPath);
       } else {
         languageFiles.set(language, [fullPath]);
       }
     }
-  });
+  }
 
   return languageFiles;
 }
@@ -70,9 +87,26 @@ export function validateFiles(files: Array<{ fileId: string; content: string }>)
   );
 }
 
-// Helper function to get the relative path excluding the language code
-export function getRelativePath(basePath: string, filePath: string, language: string): string {
-  const fullRelativePath = path.relative(basePath, filePath);
-  const parts = fullRelativePath.split(path.sep);
-  return parts.slice(1).join(path.sep); // Remove the language code
+// Helper function to get the relative path
+export function getRelativePath(basePath: string, filePath: string, excludePaths: string[] = []): string | undefined {
+  // Normalize the file path to use forward slashes
+  const normalizedFilePath = filePath.replace(/\\/g, '/');
+  
+  // Check if the file matches any of the exclude patterns
+  const isExcluded = excludePaths.some(excludePath => {
+    const normalizedExcludePath = excludePath.trim().replace(/\\/g, '/');
+    return normalizedFilePath.includes(normalizedExcludePath);
+  });
+
+  if (isExcluded) {
+    return undefined;
+  }
+
+  // Get the relative path and normalize it
+  const fullRelativePath = path.relative(basePath, filePath).replace(/\\/g, '/');
+  const parts = fullRelativePath.split('/');
+  
+  // Remove the language code (first directory) and join the rest
+  const result = parts.length > 1 ? parts.slice(1).join('/') : '';
+  return result || undefined;
 }
