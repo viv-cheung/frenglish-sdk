@@ -49,14 +49,12 @@ export async function findLanguageFiles(
 
     const absoluteParts = file.split(path.sep);
     const language = absoluteParts.find(part => supportedLanguages.includes(part.toLowerCase()));
-
-    if (language) {
-      const fullPath = path.join(basePath, relativeToBase);
-      if (languageFiles.has(language)) {
-        languageFiles.get(language)!.push(fullPath);
-      } else {
-        languageFiles.set(language, [fullPath]);
-      }
+    const fullPath = path.join(basePath, relativeToBase);
+    const targetLanguage = language || supportedLanguages[0];
+    if (languageFiles.has(targetLanguage)) {
+      languageFiles.get(targetLanguage)!.push(fullPath);
+    } else {
+      languageFiles.set(targetLanguage, [fullPath]);
     }
   }
 
@@ -88,25 +86,23 @@ export function validateFiles(files: Array<{ fileId: string; content: string }>)
 }
 
 // Helper function to get the relative path
-export function getRelativePath(basePath: string, filePath: string, excludePaths: string[] = []): string | undefined {
-  // Normalize the file path to use forward slashes
+export async function getRelativePath(basePath: string, filePath: string, supportedLanguages: string[], excludePaths: string[] = []): Promise<string | undefined> {
   const normalizedFilePath = filePath.replace(/\\/g, '/');
   
-  // Check if the file matches any of the exclude patterns
   const isExcluded = excludePaths.some(excludePath => {
     const normalizedExcludePath = excludePath.trim().replace(/\\/g, '/');
     return normalizedFilePath.includes(normalizedExcludePath);
   });
-
-  if (isExcluded) {
-    return undefined;
-  }
+  
+  if (isExcluded) return undefined;
 
   // Get the relative path and normalize it
   const fullRelativePath = path.relative(basePath, filePath).replace(/\\/g, '/');
   const parts = fullRelativePath.split('/');
   
-  // Remove the language code (first directory) and join the rest
-  const result = parts.length > 1 ? parts.slice(1).join('/') : '';
+  // Only remove first directory if it's a language code
+  const hasLanguagePrefix = parts.length > 1 && supportedLanguages.includes(parts[0].toLowerCase());
+  const result = hasLanguagePrefix ? parts.slice(1).join('/') : fullRelativePath;
+  
   return result || undefined;
 }

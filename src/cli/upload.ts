@@ -34,7 +34,7 @@ export async function upload(customPath: string = TRANSLATION_PATH, excludePath:
           .map((file) => ({
             ...file,
             language,
-            fileId: getRelativePath(customPath, file.fileId),
+            fileId: getRelativePath(customPath, file.fileId, supportedLanguages),
           }))
           .filter((file): file is typeof file & { fileId: string } => file.fileId !== undefined);
 

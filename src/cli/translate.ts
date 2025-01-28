@@ -12,6 +12,7 @@ const TRANSLATION_PATH = process.env.TRANSLATION_PATH!;
 const EXCLUDED_TRANSLATION_PATH = process.env.EXCLUDED_TRANSLATION_PATH 
   ? JSON.parse(process.env.EXCLUDED_TRANSLATION_PATH.replace(/'/g, '"'))
   : [];
+const TRANSLATION_OUTPUT_PATH = process.env.TRANSLATION_OUTPUT_PATH || TRANSLATION_PATH;
 
 export async function translate(
   customPath: string = TRANSLATION_PATH, 
@@ -29,6 +30,7 @@ export async function translate(
     // Find all files to translate using glob
     const originLanguage = (await frenglish.getDefaultConfiguration()).originLanguage
     const supportedFileTypes = await frenglish.getSupportedFileTypes()
+    const supportedLanguages = await frenglish.getSupportedLanguages()
     const languageFiles = await findLanguageFiles(customPath, [originLanguage], supportedFileTypes, excludePath);
 
     // Flatten the languageFiles map into a single array of file paths
@@ -47,9 +49,10 @@ export async function translate(
     }
 
     // We get relative path
-    const fileIDs = fileContents
-      .map(file => getRelativePath(customPath, file.fileId, excludePath))
-      .filter((path): path is string => path !== undefined);    const contents = fileContents.map(file => file.content);
+    const fileIDs = (await Promise.all(fileContents
+      .map(file => getRelativePath(customPath, file.fileId, supportedLanguages, excludePath))))
+      .filter((path): path is string => path !== undefined);
+    const contents = fileContents.map(file => file.content);
 
     console.log('Files to translate:', fileIDs);
     console.log('Uploading files and creating translation...');
@@ -65,7 +68,7 @@ export async function translate(
     
           const originalFile = fileIDs.find(file => file === translatedFile.fileId);
           if (originalFile) {
-            const translatedFilePath = path.join(customPath, language, originalFile)
+            const translatedFilePath = path.join(TRANSLATION_OUTPUT_PATH, language, originalFile)
             await fs.mkdir(path.dirname(translatedFilePath), { recursive: true });
             if (translatedFile.content.length > 0) {
               await fs.writeFile(translatedFilePath, translatedFile.content, 'utf8');

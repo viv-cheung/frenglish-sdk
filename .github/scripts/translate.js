@@ -3,8 +3,9 @@ const fs = require('fs').promises;
 const path = require('path');
 const FrenglishSDK = require('frenglish').default;
 
-const ORIGIN_LANGUAGE_DIR = 'src/locales/en';  // Adjust this to your origin language directory
+const ORIGIN_LANGUAGE_DIR = 'src/locales';  // Adjust this to your origin language directory
 const FRENGLISH_API_KEY = process.env.FRENGLISH_API_KEY;
+const TRANSLATION_OUTPUT_PATH = process.env.TRANSLATION_OUTPUT_PATH || process.env.TRANSLATION_PATH;
 const frenglish = new FrenglishSDK(FRENGLISH_API_KEY);
 
 async function getChangedFiles() {
@@ -52,10 +53,14 @@ async function main() {
       for (const translatedFile of translatedFiles) {
         const originalFile = filesToTranslate.find(file => path.basename(file) === translatedFile.fileId);
         if (originalFile) {
-          const translatedFilePath = originalFile.replace(`/en/`, `/${language}/`);
+          const translatedFilePath = path.join(TRANSLATION_OUTPUT_PATH, language, originalFile)
           await fs.mkdir(path.dirname(translatedFilePath), { recursive: true });
-          await fs.writeFile(translatedFilePath, translatedFile.content);
-          console.log(`Translated file written: ${translatedFilePath}`);
+          if (translatedFile.content.length > 0) {
+            await fs.writeFile(translatedFilePath, translatedFile.content, 'utf8');
+            console.log(`Translated file written: ${translatedFilePath}`);
+          } else {
+            console.warn(`Empty content for file: ${translatedFile.fileId}. Skipping.`);
+          }
         } else {
           console.warn(`Original file not found for translated file: ${translatedFile.fileId}`);
         }
