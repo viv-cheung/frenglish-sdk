@@ -41,30 +41,39 @@ class FrenglishSDK {
     const body: any = { content, apiKey: this.apiKey, isFullTranslation, filenames, partialConfig: parsedConfig };
 
     // Sending translation request
-    const response = await fetch(`${FRENGLISH_BACKEND_URL}/api/translation/request-translation`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`,
-      },
-      body: JSON.stringify(body),
-    });
-    if (!response.ok) {
-      throw new Error(`Failed to request translation: ${JSON.stringify(response)}`);
-    }
-    const data: RequestTranslationResponse = await response.json()
-    while (Date.now() - startTime < MAX_POLLING_TIME) {
-      const translationStatus = await this.getTranslationStatus(data.translationId)
-      if (translationStatus === TranslationStatus.COMPLETED) {
-        const content = await this.getTranslationContent(data.translationId)
-        return { translationId: data.translationId, content }
-      } else if (translationStatus === TranslationStatus.CANCELLED) { 
-        throw new Error('Translation cancelled')
-        return
+    try {
+      const response = await fetch(`${FRENGLISH_BACKEND_URL}/api/translation/request-translation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) {
+        console.error(`Failed to request translation: ${JSON.stringify(response)}`)
       }
-
-      // If not completed, wait before checking again
-      await new Promise(resolve => setTimeout(resolve, POLLING_INTERVAL))
+      const data: RequestTranslationResponse = await response.json()
+      while (Date.now() - startTime < MAX_POLLING_TIME) {
+        const translationStatus = await this.getTranslationStatus(data.translationId)
+        if (translationStatus === TranslationStatus.COMPLETED) {
+          const content = await this.getTranslationContent(data.translationId)
+          return { translationId: data.translationId, content }
+        } else if (translationStatus === TranslationStatus.CANCELLED) { 
+          throw new Error('Translation cancelled')
+          return
+        }
+  
+        // If not completed, wait before checking again
+        await new Promise(resolve => setTimeout(resolve, POLLING_INTERVAL))
+      }
+    } catch {
+      console.error(`Failed to request translation. Returning original content.`)
+      const originalContent: TranslationResponse[] = content.map((text, index) => ({
+        language: 'Original Language',
+        files: [{ fileId: filenames[index] || '', content:JSON.stringify(JSON.parse(text))}]
+      }));
+      return { translationId: 0, content: originalContent }
     }
   }
 
