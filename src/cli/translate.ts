@@ -2,7 +2,7 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 import dotenv from 'dotenv';
 import FrenglishSDK from '../sdk';
-import { findLanguageFiles, getRelativePath, readFiles } from './utils';
+import { findLanguageFilesToTranslate, getRelativePath, readFiles } from './utils';
 import { PartialConfiguration } from 'src/types/configuration';
 
 dotenv.config();
@@ -31,7 +31,7 @@ export async function translate(
     const originLanguage = (await frenglish.getDefaultConfiguration()).originLanguage
     const supportedFileTypes = await frenglish.getSupportedFileTypes()
     const supportedLanguages = await frenglish.getSupportedLanguages()
-    const languageFiles = await findLanguageFiles(customPath, [originLanguage], supportedFileTypes, excludePath);
+    const languageFiles = await findLanguageFilesToTranslate(customPath, originLanguage, supportedLanguages, supportedFileTypes, excludePath);
 
     // Flatten the languageFiles map into a single array of file paths
     const filesToTranslate = Array.from(languageFiles.values()).flat();

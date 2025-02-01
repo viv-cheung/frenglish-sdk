@@ -1,0 +1,21 @@
+{
+    "appTitle": "My Application",
+    "welcomeMessage": "Hello, Welcome to My Application!",
+    "login": {
+      "usernamePlaceholder": "Enter your username",
+      "passwordPlaceholder": "Enter your password",
+      "loginButton": "Login",
+      "forgotPassword": "Forgot your password?"
+    },
+    "signup": {
+      "signupButton": "Sign Up",
+      "alreadyHaveAccount": "Already have an account?"
+    },
+    "errors": {
+      "requiredField": "This field is required.",
+      "invalidEmail": "Please enter a valid email address.",
+      "passwordMismatch": "Passwords do not match. test",
+      "hello": "hello world test"
+    }
+  }
+  

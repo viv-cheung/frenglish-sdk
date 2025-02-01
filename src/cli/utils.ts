@@ -11,8 +11,9 @@ import { minimatch } from 'minimatch';
  * @param supportedLanguages - array of supported language codes (e.g., ['en', 'fr', 'es'])
  * @returns {Promise<Map<string, string[]>>} - a map of language codes to file paths
  */
-export async function findLanguageFiles(
+export async function findLanguageFilesToTranslate(
   basePath: string,
+  originLanguage: string,
   supportedLanguages: string[],
   supportedFileTypes: string[],
   excludePath: string[] = []
@@ -41,7 +42,11 @@ export async function findLanguageFiles(
       
       // Otherwise, use simple includes for exact path matching
       return normalizedFile.includes(cleanPattern);
-    });
+    }) || supportedLanguages.some(lang => 
+      // Only exclude if path contains any supported language code that isn't the origin language
+      lang !== originLanguage && 
+      file.toLowerCase().split(path.sep).includes(lang.toLowerCase())
+    );
 
     if (shouldExclude) {
       continue;
