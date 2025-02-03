@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 import FrenglishSDK from '../sdk';
-import { findLanguageFiles, readFiles, validateFiles, getRelativePath } from './utils'; // Import helpers
+import { findLanguageFilesToTranslate, readFiles, validateFiles, getRelativePath } from './utils'; // Import helpers
 import { FileContentWithLanguage } from 'src/types/api';
 
 dotenv.config();
@@ -23,7 +23,7 @@ export async function upload(customPath: string = TRANSLATION_PATH, excludePath:
     const supportedFileTypes = await frenglish.getSupportedFileTypes()
 
     // Find language files using glob
-    const languageFiles = await findLanguageFiles(customPath, supportedLanguages, supportedFileTypes, excludePath);
+    const languageFiles = await findLanguageFilesToTranslate(customPath, supportedLanguages, supportedFileTypes, excludePath);
     const filesToUpload: FileContentWithLanguage[] = [];
 
     // Process each language and its corresponding files
