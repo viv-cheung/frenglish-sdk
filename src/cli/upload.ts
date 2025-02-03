@@ -1,71 +1,71 @@
-import dotenv from 'dotenv';
-import FrenglishSDK from '../sdk';
-import { findLanguageFilesToTranslate, readFiles, validateFiles, getRelativePath } from './utils'; // Import helpers
-import { FileContentWithLanguage } from 'src/types/api';
+import dotenv from 'dotenv'
+import FrenglishSDK from '../sdk'
+import { findLanguageFilesToTranslate, readFiles, validateFiles, getRelativePath } from './utils' // Import helpers
+import { FileContentWithLanguage } from 'src/types/api'
 
-dotenv.config();
+dotenv.config()
 
-const TRANSLATION_PATH = process.env.TRANSLATION_PATH!;
-const FRENGLISH_API_KEY = process.env.FRENGLISH_API_KEY;
-const EXCLUDED_TRANSLATION_PATH = process.env.EXCLUDED_TRANSLATION_PATH 
+const TRANSLATION_PATH = process.env.TRANSLATION_PATH!
+const FRENGLISH_API_KEY = process.env.FRENGLISH_API_KEY
+const EXCLUDED_TRANSLATION_PATH = process.env.EXCLUDED_TRANSLATION_PATH
   ? JSON.parse(process.env.EXCLUDED_TRANSLATION_PATH.replace(/'/g, '"'))
-  : [];
+  : []
 
 export async function upload(customPath: string = TRANSLATION_PATH, excludePath: string[] = EXCLUDED_TRANSLATION_PATH
 ) {
   try {
     if (!FRENGLISH_API_KEY) {
-      throw new Error('FRENGLISH_API_KEY environment variable is not set');
+      throw new Error('FRENGLISH_API_KEY environment variable is not set')
     }
 
-    const frenglish = new FrenglishSDK(FRENGLISH_API_KEY);
-    const supportedLanguages = await frenglish.getSupportedLanguages();
+    const frenglish = new FrenglishSDK(FRENGLISH_API_KEY)
+    const supportedLanguages = await frenglish.getSupportedLanguages()
     const supportedFileTypes = await frenglish.getSupportedFileTypes()
 
     // Find language files using glob
-    const languageFiles = await findLanguageFilesToTranslate(customPath, supportedLanguages, supportedFileTypes, excludePath);
-    const filesToUpload: FileContentWithLanguage[] = [];
+    const languageFiles = await findLanguageFilesToTranslate(customPath, supportedLanguages, supportedFileTypes, excludePath)
+    const filesToUpload: FileContentWithLanguage[] = []
 
     // Process each language and its corresponding files
     for (const [language, files] of languageFiles.entries()) {
       if (supportedLanguages.includes(language)) {
-        const fileContents = await readFiles(files);
+        const fileContents = await readFiles(files)
         const validatedFiles = fileContents
           .map((file) => ({
             ...file,
             language,
             fileId: getRelativePath(customPath, file.fileId, supportedLanguages),
           }))
-          .filter((file): file is typeof file & { fileId: string } => file.fileId !== undefined);
+          .filter((file): file is typeof file & { fileId: string } => file.fileId !== undefined)
 
         if (!validateFiles(validatedFiles)) {
-          console.warn('Some files are invalid');
+          console.warn('Some files are invalid')
         }
 
-        filesToUpload.push(...validatedFiles);
+        filesToUpload.push(...validatedFiles)
       } else {
-        console.log(`Skipping unsupported language: ${language}`);
+        console.log(`Skipping unsupported language: ${language}`)
       }
     }
 
     if (filesToUpload.length === 0) {
-      console.log('No valid files to upload.');
-      return;
+      console.log('No valid files to upload.')
+      return
     }
 
-    console.log('Uploading files:');
-    filesToUpload.forEach(file => console.log(`- ${file.fileId}`));
+    console.log('Uploading files:')
+    filesToUpload.forEach(file => console.log(`- ${file.fileId}`))
 
     try {
-      await frenglish.upload(filesToUpload);
-      console.log(`${filesToUpload.length} files uploaded successfully`);
+      await frenglish.upload(filesToUpload)
+      console.log(`${filesToUpload.length} files uploaded successfully`)
     } catch (uploadError) {
-      console.error('Error uploading files:', uploadError);
+      console.error('Error uploading files:', uploadError)
     }
 
-    console.log('All files processed');
+    console.log('All files processed')
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error:', error)
   }
 }
 
@@ -86,12 +86,12 @@ if (require.main === module) {
       .help('h')
       .alias('h', 'help')
       .epilog('For more information, visit https://www.frenglish.ai')
-      .parse();
+      .parse()
 
     if (argv._.includes('upload')) {
-      upload(argv.path as string);
+      upload(argv.path as string)
     } else {
-      yargs.showHelp();
+      yargs.showHelp()
     }
-  });
+  })
 }

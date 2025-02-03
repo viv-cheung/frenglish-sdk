@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-import yargs from 'yargs';
-import { hideBin } from 'yargs/helpers';
-import { translate } from './translate';
-import { upload } from './upload';
+import yargs from 'yargs'
+import { hideBin } from 'yargs/helpers'
+import { translate } from './translate'
+import { upload } from './upload'
 
 yargs(hideBin(process.argv))
   .usage('Usage: $0 <command> [options]')
@@ -27,26 +27,26 @@ yargs(hideBin(process.argv))
           description: 'Specify a partial configuration as JSON string or path to JSON file (e.g., \'{"key":"value"}\' or "./config.json")',
           default: undefined,
           coerce: (arg: string) => {
-            if (!arg) return undefined;
-            
+            if (!arg) return undefined
+
             try {
               // First try to parse as JSON string
-              return JSON.parse(arg);
+              return JSON.parse(arg)
             } catch {
               // If parsing fails, try to read it as a file
               try {
-                const fs = require('fs');
-                const content = fs.readFileSync(arg, 'utf8');
-                return JSON.parse(content);
+                const fs = require('fs')
+                const content = fs.readFileSync(arg, 'utf8')
+                return JSON.parse(content)
               } catch (e) {
-                throw new Error(`Failed to parse partialConfig: ${arg}. Must be valid JSON string or path to JSON file.`);
+                throw new Error(`Failed to parse partialConfig: ${arg}. Must be valid JSON string or path to JSON file. Error: ${e}`)
               }
             }
           }
-        });
+        })
     },
     handler: (argv: any) => {
-      translate(argv.path, argv.isFullTranslation, argv.partialConfig);
+      translate(argv.path, argv.isFullTranslation, argv.partialConfig)
     }
   })
   .command('upload', 'Upload files for translation', (yargs) => {
@@ -54,9 +54,9 @@ yargs(hideBin(process.argv))
       type: 'string',
       description: 'Specify custom path for uploading files',
       default: process.env.TRANSLATION_PATH
-    });
+    })
   }, (argv) => {
-    upload(argv.path as string);
+    upload(argv.path as string)
   })
   .demandCommand(1, 'You need at least one command before moving on')
   .help('help')
@@ -72,4 +72,4 @@ yargs(hideBin(process.argv))
   .example('$0 translate --partialConfig="./src/configs/translationConfig.json"', 'Translate files using configuration from a JSON file')
   .epilog('For more information, visit https://www.frenglish.ai')
   .wrap(yargs.terminalWidth())
-  .parse();
+  .parse()

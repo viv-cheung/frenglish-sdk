@@ -1,5 +1,3 @@
-import { TranslationStatus } from "./translation"
-
 export type FileContent = {
     fileId: string
     content: string
