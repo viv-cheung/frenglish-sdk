@@ -8,6 +8,7 @@ export interface Configuration {
     rulesPerLanguage: Rule[],
     useThisConfig: boolean,
     keyFilters: Filter | null;
+    languageSelector: LanguageSelector | null;
   }
 
 export type PartialConfiguration = {

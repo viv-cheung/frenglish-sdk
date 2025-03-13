@@ -2,18 +2,14 @@
     "name": "frenglish",
     "version": "1.11.3",
     "description": "SDK for Frenglish translation service",
-    "main": "dist/index.js",
-    "types": "dist/index.d.ts",
-    "bin": {
-        "frenglish": "dist/cli/index.js"
-    },
+    "main": "./dist/sdk/index.js",
+    "types": "./dist/sdk/index.d.ts",
     "scripts": {
-        "build": "tsc",
-        "test": "vitest",
+        "clean": "rm -rf dist",
+        "build": "npm run clean && tsc",
         "prepare": "npm run build",
-        "test:debug": "vitest --no-silent",
         "prepublishOnly": "npm run build",
-        "postbuild": "chmod +x ./dist/cli/index.js"
+        "test:debug": "vitest --no-silent"
     },
     "keywords": [
         "translation",

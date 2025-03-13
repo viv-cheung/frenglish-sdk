@@ -4,15 +4,16 @@ import { FileContentWithLanguage, RequestTranslationResponse, TranslationRespons
 import { File } from '../types/file'
 import { TranslationStatus } from '../types/translation';
 import { parsePartialConfig } from '../utils/files';
+import { IFrenglishSDK } from '../types/IFrenglishSDK';
 
-class FrenglishSDK {
+export class FrenglishSDK implements IFrenglishSDK {
   private apiKey: string;
 
   constructor(apiKey: string) {
     this.apiKey = apiKey;
   }
 
-  async registerWebhook(webhookUrl: string): Promise<void> {
+  public async registerWebhook(webhookUrl: string): Promise<void> {
     const response = await fetch(`${FRENGLISH_BACKEND_URL}/api/webhook/register-webhook`, {
       method: 'POST',
       headers: {
@@ -32,7 +33,7 @@ class FrenglishSDK {
   }
 
   // Send a translation request to Frenglish!
-  async translate(content: string[], isFullTranslation: boolean = false, filenames: string[] = [], partialConfig: PartialConfiguration = {}): 
+  public async translate(content: string[], isFullTranslation: boolean = false, filenames: string[] = [], partialConfig: PartialConfiguration = {}): 
   Promise<RequestTranslationResponse | undefined> {
     const POLLING_INTERVAL = 500 // 5 seconds
     const MAX_POLLING_TIME = 1800000 // 30 minutes  
@@ -69,7 +70,7 @@ class FrenglishSDK {
   }
 
   // Send a translation string request to Frenglish and receive a string response
-  async translateString(content: string, lang: string, partialConfig: PartialConfiguration = {}): Promise<String | undefined> {
+  public async translateString(content: string, lang: string, partialConfig: PartialConfiguration = {}): Promise<String | undefined> {
     const POLLING_INTERVAL = 500 // 5 seconds
     const MAX_POLLING_TIME = 1800000 // 30 minutes  
     const startTime = Date.now() - POLLING_INTERVAL
@@ -129,7 +130,7 @@ class FrenglishSDK {
   }
 
   // Get text map for your projects
-  async getTextMap(): Promise<File | null> {
+  public async getTextMap(): Promise<File | null> {
     const body: any = { apiKey: this.apiKey };
 
     // Sending translation request
@@ -150,7 +151,7 @@ class FrenglishSDK {
   }
 
   // Upload files to use as base comparison
-  async upload(files: FileContentWithLanguage[]) {
+  public async upload(files: FileContentWithLanguage[]) {
     console.log('Attempting to upload to:', `${FRENGLISH_BACKEND_URL}/api/translation/upload-files`);
     try {
       const response = await fetch(`${FRENGLISH_BACKEND_URL}/api/translation/upload-files`, {
@@ -175,7 +176,7 @@ class FrenglishSDK {
   }
 
   // Get supported languages
-  async getSupportedLanguages() {
+  public async getSupportedLanguages() {
     try {
       const response = await fetch(`${FRENGLISH_BACKEND_URL}/api/translation/supported-languages`, {
         method: 'POST',
@@ -198,7 +199,7 @@ class FrenglishSDK {
   }
 
   // Get supported file types
-  async getPublicAPIKeyFromDomain(domain: string) {
+  public async getPublicAPIKeyFromDomain(domain: string) {
     try {
       const response = await fetch(`${FRENGLISH_BACKEND_URL}/api/project/get-public-api-key-from-domain`, {
         method: 'POST',
@@ -221,7 +222,7 @@ class FrenglishSDK {
   }
 
   // Get supported file types
-  async getSupportedFileTypes() {
+  public async getSupportedFileTypes() {
     try {
       const response = await fetch(`${FRENGLISH_BACKEND_URL}/api/translation/supported-file-types`, {
         method: 'POST',
@@ -242,7 +243,7 @@ class FrenglishSDK {
     }
   }
 
-  async getProjectSupportedLanguages(): Promise<{ supportedLanguages: string[], originLanguage: string }> {
+  public async getProjectSupportedLanguages(): Promise<{ languages: string[], originLanguage: string }> {
     try {
       const response = await fetch(`${FRENGLISH_BACKEND_URL}/api/configuration/get-project-supported-languages`, {
         method: 'POST',
@@ -265,8 +266,8 @@ class FrenglishSDK {
     }
   }
 
-  // Get supported file types
-  async getDefaultConfiguration(): Promise<Configuration> {
+  // Get translation configuration
+  public async getDefaultConfiguration(): Promise<Configuration> {
     try {
       const response = await fetch(`${FRENGLISH_BACKEND_URL}/api/configuration/get-default-configuration`, {
         method: 'POST',
@@ -288,8 +289,29 @@ class FrenglishSDK {
     }
   }
 
+  public async getProjectDomain(): Promise<string> {
+    try {
+      const response = await fetch(`${FRENGLISH_BACKEND_URL}/api/project/get-domain-url`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ apiKey: this.apiKey }),
+      });
+      console.log("response", response);
+      const data = await response.json();
+      console.log('data', data);
+
+      return data;
+    } catch (error) {
+      console.error('Error getting project domain:', error);
+      throw error;
+    }
+  }
+
   // Polling request to get the translation status once completed
-  async getTranslationStatus(translationId: number): Promise<TranslationStatus> {
+  public async getTranslationStatus(translationId: number): Promise<TranslationStatus> {
     const response = await fetch(`${FRENGLISH_BACKEND_URL}/api/translation/get-status`, {
       method: 'POST',
       headers: {
@@ -308,7 +330,7 @@ class FrenglishSDK {
   }
 
   // Get the translation content (call this after the translation status is "COMPLETED")
-  async getTranslationContent(translationId: number): Promise<TranslationResponse[]> {
+  public async getTranslationContent(translationId: number): Promise<TranslationResponse[]> {
     const response = await fetch(`${FRENGLISH_BACKEND_URL}/api/translation/get-translation`, {
       method: 'POST',
       headers: {
