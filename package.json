@@ -1,6 +1,6 @@
 {
     "name": "frenglish",
-    "version": "1.12.0",
+    "version": "1.12.1",
     "description": "SDK for Frenglish translation service",
     "main": "./dist/sdk/index.js",
     "types": "./dist/sdk/index.d.ts",
@@ -18,7 +18,7 @@
     ],
     "bin": {
         "frenglish": "./dist/cli/index.js"
-      },
+    },
     "author": "frenglish",
     "license": "MIT",
     "devDependencies": {
