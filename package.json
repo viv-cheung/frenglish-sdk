@@ -16,6 +16,9 @@
         "sdk",
         "frenglish"
     ],
+    "bin": {
+        "frenglish": "./dist/cli/index.js"
+      },
     "author": "frenglish",
     "license": "MIT",
     "devDependencies": {
