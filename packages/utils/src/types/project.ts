@@ -20,7 +20,7 @@ export interface WordpressConfig {
     apiKey: string;
     includedUrlPaths: string [];
     excludedUrlPaths: string [];
-  }
+}
 
 export interface ProjectResponse {
     project: Project;

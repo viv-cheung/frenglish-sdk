@@ -11,8 +11,11 @@ export interface Configuration {
     rulesPerLanguage: Rule[] | null;
     oneTimeTranslation: boolean;
     keyFilters: Filter | null;
+    keyFiltersPerLanguage: KeyFilterRule[] | null;
     languageAvailability: LanguageAvailabilityPayload | null;
+    geoRouting?: GeoRoutingPayload | null;
     useTranslatedUrls: boolean;
+    includeExcludedPathLanguagesInSitemap?: boolean;
     showOriginLanguageCode: boolean;
     createdAt: string | null;
     lastModifiedAt: string | null;
@@ -31,6 +34,13 @@ export interface LanguageAvailabilityPayload {
   settings?: {
     unavailableBehavior?: string; // default "/"
   };
+}
+
+export interface GeoRoutingPayload {
+  enabled: boolean;
+  countryToLanguage: Record<string, string>;
+  regionToLanguage?: Record<string, string>;
+  originHandledLanguages?: string[];
 }
 
 export interface ConfigurationResponse {
@@ -64,4 +74,10 @@ export type Rule = {
 export interface Filter {
     includeFilters: string[] | null
     excludeFilters: string[] | null
+}
+
+/** Per-language key filters (include/exclude JSON keys). Falls back to global keyFilters when no entry for language. */
+export interface KeyFilterRule {
+    language: string;
+    keyFilters: Filter;
 }
