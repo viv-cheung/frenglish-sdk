@@ -4,6 +4,8 @@ export interface Project {
     isTestIntegrationMode: boolean
     webhookUrls?: string[]
     domain?: string
+    /** Staging or other hostnames that resolve to this project; translations use `domain` as canonical. */
+    websiteAliasDomains?: string[] | null
     integrationConfig?: WordpressConfig | DefaultWebsiteConfig | null
     isActive: boolean
     lastModifiedAt: string
@@ -27,6 +29,19 @@ export interface ProjectResponse {
 }
 export type UrlMapEntry = { original: string; translated: string };
 export type UrlMapPerLanguage = { enabled: boolean; urls: Record<string, UrlMapEntry> };
+
+export interface WebsiteAliasCloudflareConfig {
+    domain: string;
+    cloudflareCustomHostnameID: string;
+    cloudflareTxtRecord1Name: string;
+    cloudflareTxtRecord1Value: string;
+    cloudflareTxtRecord2Name: string;
+    cloudflareTxtRecord2Value: string;
+    isTXT1DNSValidated: boolean;
+    isTXT2DNSValidated: boolean;
+    isReverseProxyDNSValidated: boolean;
+}
+
 export interface DefaultWebsiteConfig {
     websiteIntegrationType: 'nextjs' | 'webflow' | 'squarespace' | 'salesforce' | 'other';
     isTXT1DNSValidated: boolean;
@@ -42,4 +57,5 @@ export interface DefaultWebsiteConfig {
     cloudflareOriginServerProxy: string;
     includedUrlPaths: string [];
     excludedUrlPaths: string [];
+    websiteAliasCloudflareConfigs?: WebsiteAliasCloudflareConfig[] | null;
   }
