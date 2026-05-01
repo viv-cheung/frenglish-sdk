@@ -43,7 +43,7 @@
         "glob": "^8.0.3",
         "glob-promise": "^6.0.7",
         "jsdom": "^24.0.0",
-        "minimatch": "^10.0.1"
+        "minimatch": "^10.2.3"
     },
     "files": [
         "dist"
