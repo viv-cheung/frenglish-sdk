@@ -106,9 +106,7 @@ export const pollForTranslation = async (
 
     if (translationStatus === TranslationStatus.COMPLETED) {
       return apiRequest<TranslationResponse[]>('/api/translation/get-translation', {
-        body: {
-          translationId,
-          apiKey,
+        body: { translationId, apiKey,
         },
         errorContext: 'Failed to get translation content',
       })
