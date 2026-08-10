@@ -1,6 +1,6 @@
 {
     "name": "@frenglish/cli",
-    "version": "1.0.65",
+    "version": "1.0.66",
     "description": "CLI for Frenglish translation service",
     "main": "dist/index.js",
     "type": "module",
