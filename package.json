@@ -20,8 +20,8 @@
         "test": "pnpm --filter '@frenglish/*' test"
     },
     "devDependencies": {
-        "eslint": "^9.23.0",
-        "eslint-config-prettier": "^10.1.2",
-        "typescript-eslint": "^8.30.1"
+        "eslint": "^9.39.5",
+        "eslint-config-prettier": "^10.1.8",
+        "typescript-eslint": "^8.66.0"
     }
 }
