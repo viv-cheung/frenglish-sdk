@@ -647,30 +647,30 @@ async function hashForKeyedValidation(
   return hashExtractionContent(raw, config, true, masterStyleMap)
 }
 
-function isOriginLanguageStamp(el: Element, config: Configuration): boolean {
-  const stamped = (el.getAttribute('translated-lang') || '').toLowerCase()
-  // Unstamped nodes are treated as origin content.
-  if (!stamped) return true
-  const originLang = (config.originLanguage || '').toLowerCase()
-  // Without a configured origin language we cannot safely decide whether a
-  // stamped body is still origin text — skip invalidation for stamped nodes.
-  if (!originLang) return false
-  return stamped === originLang
-}
-
 /**
- * Only invalidate stale keys during origin-language extraction.
- * Target-language passes may see already-translated bodies under a stale origin
- * stamp; re-hashing those would mint junk source strings.
+ * Whether a keyed node should be hash-validated and reminted when content drifts.
+ *
+ * - Explicit origin stamp (e.g. translated-lang="en-ca"): safe on any language
+ *   pass, including target-lang `/request-translated-file`. The body is still
+ *   origin text (WP edits keep the old key + new English under the origin stamp).
+ * - Unstamped: only remint during origin-language extraction.
+ * - Target stamp (e.g. fr-ca): never remint — body is translated and must not
+ *   become a new source string.
  */
 function shouldInvalidateStaleKeys(
+  el: Element,
   currentLanguage: string | undefined,
   config: Configuration,
 ): boolean {
   const originLang = (config.originLanguage || '').toLowerCase()
   if (!originLang) return false
-  const current = (currentLanguage || '').toLowerCase()
-  return current === originLang
+  const stamped = (el.getAttribute('translated-lang') || '').toLowerCase()
+  if (stamped === originLang) return true
+  if (!stamped) {
+    const current = (currentLanguage || '').toLowerCase()
+    return current === originLang
+  }
+  return false
 }
 
 function isHashPlaceholder(value: string | null | undefined, hash: string): boolean {
@@ -808,8 +808,9 @@ async function processAttributes(
       const existingHash = el.getAttribute(keyAttr) || ''
       // Injected placeholder form — still valid.
       if (isHashPlaceholder(val, existingHash)) continue
-      // Only invalidate on origin-language passes for origin-stamped nodes.
-      if (!shouldInvalidateStaleKeys(currentLanguage, config) || !isOriginLanguageStamp(el, config)) {
+      // Remint when content drifted under an origin stamp (any lang pass) or
+      // under an unstamped node during origin-lang extraction.
+      if (!shouldInvalidateStaleKeys(el, currentLanguage, config)) {
         continue
       }
       const expected = await hashForKeyedValidation(val, config, masterStyleMap)
@@ -1163,13 +1164,9 @@ export async function extractStrings(
           return
         }
 
-        // Only invalidate on origin-language extraction passes when the node is
-        // still origin-stamped. Target-language passes must not re-hash bodies that
-        // may already be translated under a stale origin stamp.
-        if (
-          shouldInvalidateStaleKeys(currentLanguage, config) &&
-          isOriginLanguageStamp(el, config)
-        ) {
+        // Origin-stamped nodes remint on any lang pass (including fr-ca
+        // request-translated-file). Target-stamped bodies are left alone.
+        if (shouldInvalidateStaleKeys(el, currentLanguage, config)) {
           const expected = await hashForKeyedValidation(inner, config, masterStyleMap)
           if (!expected || expected.toLowerCase() === existingHash.toLowerCase()) {
             return
