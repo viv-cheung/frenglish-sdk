@@ -570,7 +570,11 @@ function serializeOpenPlaceholderTag(el: Element) {
 
 function stampTranslated(el: Element, currentLanguage?: string) {
   if (!currentLanguage) return;
-  if (!el.hasAttribute('translated-lang')) {
+  const existing = el.getAttribute('translated-lang')
+  // Allow overwrite when the stamp is missing or belongs to a different language.
+  // Stale origin-language stamps (e.g. translated-lang="en-ca" on a fr-ca page)
+  // must not block re-application of the target translation.
+  if (!existing || existing.toLowerCase() !== currentLanguage.toLowerCase()) {
     el.setAttribute('translated-lang', currentLanguage);
   }
 }
@@ -597,6 +601,82 @@ const generatePlaceholder = (txt: string) => {
   const hash = SHA256(canon).toString()
   return hash
 };
+
+/** Hash extraction content the same way upsertPlaceholder does, without mutating text maps. */
+async function hashExtractionContent(
+  raw: string | undefined | null,
+  config: Configuration,
+  compress: boolean,
+  masterStyleMap: MasterStyleMap,
+): Promise<string | null> {
+  if (!raw) return null
+  const { middleText } = extractTextComponents(raw)
+  if (!middleText) return null
+
+  let compressedMiddleTextString: string
+  if (compress) {
+    compressedMiddleTextString = await getCompressedInLineWithStyleMap(middleText, config, masterStyleMap)
+  } else {
+    compressedMiddleTextString = unescapeHtml(middleText)
+  }
+
+  const PH_TAG_RE = /<(\/?)(sty|href|excl)(\d+)([^>]*)>/gi;
+  compressedMiddleTextString = compressedMiddleTextString.replace(
+    PH_TAG_RE,
+    (
+      _full: string,
+      slash: string = '',
+      prefix: string,
+      num: string,
+      rest: string = ''
+    ) => `<${slash}${prefix.toLowerCase()}${num}${rest}>`
+  );
+
+  return generatePlaceholder(compressedMiddleTextString)
+}
+
+/**
+ * Keys are minted with compress=true in the production pipeline. Always validate
+ * against the compressed form so compress=false extract passes do not false-invalidate.
+ */
+async function hashForKeyedValidation(
+  raw: string | undefined | null,
+  config: Configuration,
+  masterStyleMap: MasterStyleMap,
+): Promise<string | null> {
+  return hashExtractionContent(raw, config, true, masterStyleMap)
+}
+
+function isOriginLanguageStamp(el: Element, config: Configuration): boolean {
+  const stamped = (el.getAttribute('translated-lang') || '').toLowerCase()
+  // Unstamped nodes are treated as origin content.
+  if (!stamped) return true
+  const originLang = (config.originLanguage || '').toLowerCase()
+  // Without a configured origin language we cannot safely decide whether a
+  // stamped body is still origin text — skip invalidation for stamped nodes.
+  if (!originLang) return false
+  return stamped === originLang
+}
+
+/**
+ * Only invalidate stale keys during origin-language extraction.
+ * Target-language passes may see already-translated bodies under a stale origin
+ * stamp; re-hashing those would mint junk source strings.
+ */
+function shouldInvalidateStaleKeys(
+  currentLanguage: string | undefined,
+  config: Configuration,
+): boolean {
+  const originLang = (config.originLanguage || '').toLowerCase()
+  if (!originLang) return false
+  const current = (currentLanguage || '').toLowerCase()
+  return current === originLang
+}
+
+function isHashPlaceholder(value: string | null | undefined, hash: string): boolean {
+  const v = (value || '').trim()
+  return !!v && /^[a-f0-9]{64}$/i.test(v) && v.toLowerCase() === hash.toLowerCase()
+}
 
 export type TextMaps = { forward: Record<string, string>; reverse: Record<string, string> }
 
@@ -722,12 +802,25 @@ async function processAttributes(
 
   // Generic attribute handling
   for (const attr of TRANSLATABLE_ATTRIBUTES) {
-    if (el.hasAttribute(`${FRENGLISH_DATA_KEY}-${attr}`)) continue
+    const keyAttr = `${FRENGLISH_DATA_KEY}-${attr}`
     const val = el.getAttribute(attr)
+    if (el.hasAttribute(keyAttr)) {
+      const existingHash = el.getAttribute(keyAttr) || ''
+      // Injected placeholder form — still valid.
+      if (isHashPlaceholder(val, existingHash)) continue
+      // Only invalidate on origin-language passes for origin-stamped nodes.
+      if (!shouldInvalidateStaleKeys(currentLanguage, config) || !isOriginLanguageStamp(el, config)) {
+        continue
+      }
+      const expected = await hashForKeyedValidation(val, config, masterStyleMap)
+      if (expected && expected.toLowerCase() === existingHash.toLowerCase()) continue
+      // Stale attribute key: drop and re-extract below.
+      el.removeAttribute(keyAttr)
+    }
     if (!val?.trim()) continue
     const rep = await upsertPlaceholder(val, maps, inject, config, compress, masterStyleMap)
     if (!rep) continue
-    if (injectDataKey) el.setAttribute(`${FRENGLISH_DATA_KEY}-${attr}`, rep.hash)
+    if (injectDataKey) el.setAttribute(keyAttr, rep.hash)
     // Only replace visible value when we're injecting placeholders
     if (mutate) {
       el.setAttribute(attr, rep.newText)
@@ -753,8 +846,10 @@ async function processAttributes(
     }
   }
 
-  // <link rel="canonical" href="/proxy/..."> — keep canonical in sync with language
-  if (tag === 'link') {
+  // <link rel="canonical" href="/proxy/..."> — keep canonical in sync with language.
+  // Gate on mutate: client extract uses window.document with injectPlaceholders=false,
+  // and must not rewrite live SEO tags when only scanning for text/hash repair.
+  if (mutate && tag === 'link') {
     const relRaw = el.getAttribute('rel') || '';
     const rel = relRaw.toLowerCase();
     if (rel && rel.split(/\s+/).includes('canonical')) {
@@ -1059,7 +1154,35 @@ export async function extractStrings(
         return
       }
 
-      if (el.hasAttribute(FRENGLISH_DATA_KEY)) return
+      if (el.hasAttribute(FRENGLISH_DATA_KEY)) {
+        const existingHash = el.getAttribute(FRENGLISH_DATA_KEY) || ''
+        const inner = el.innerHTML || ''
+
+        // Mid-pipeline placeholder form: inner content IS the hash.
+        if (isHashPlaceholder(inner, existingHash)) {
+          return
+        }
+
+        // Only invalidate on origin-language extraction passes when the node is
+        // still origin-stamped. Target-language passes must not re-hash bodies that
+        // may already be translated under a stale origin stamp.
+        if (
+          shouldInvalidateStaleKeys(currentLanguage, config) &&
+          isOriginLanguageStamp(el, config)
+        ) {
+          const expected = await hashForKeyedValidation(inner, config, masterStyleMap)
+          if (!expected || expected.toLowerCase() === existingHash.toLowerCase()) {
+            return
+          }
+          // Content changed under a stale key — drop anchors and re-extract.
+          el.removeAttribute(FRENGLISH_DATA_KEY)
+          el.removeAttribute('translated-lang')
+          originallyTagged.delete(el)
+          // fall through to normal extraction
+        } else {
+          return
+        }
+      }
       if (el.classList?.contains('ionicon')) {
         await processAttributes(el, maps, injectPlaceholders, config, compress, injectDataKey, masterStyleMap, currentLanguage)
         return
