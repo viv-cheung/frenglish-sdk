@@ -602,68 +602,35 @@ const generatePlaceholder = (txt: string) => {
   return hash
 };
 
-/** Hash extraction content the same way upsertPlaceholder does, without mutating text maps. */
-async function hashExtractionContent(
-  raw: string | undefined | null,
-  config: Configuration,
-  compress: boolean,
-  masterStyleMap: MasterStyleMap,
-): Promise<string | null> {
-  if (!raw) return null
-  const { middleText } = extractTextComponents(raw)
-  if (!middleText) return null
-
-  let compressedMiddleTextString: string
-  if (compress) {
-    compressedMiddleTextString = await getCompressedInLineWithStyleMap(middleText, config, masterStyleMap)
-  } else {
-    compressedMiddleTextString = unescapeHtml(middleText)
-  }
-
-  const PH_TAG_RE = /<(\/?)(sty|href|excl)(\d+)([^>]*)>/gi;
-  compressedMiddleTextString = compressedMiddleTextString.replace(
-    PH_TAG_RE,
-    (
-      _full: string,
-      slash: string = '',
-      prefix: string,
-      num: string,
-      rest: string = ''
-    ) => `<${slash}${prefix.toLowerCase()}${num}${rest}>`
-  );
-
-  return generatePlaceholder(compressedMiddleTextString)
-}
-
 /**
- * Keys are minted with compress=true in the production pipeline. Always validate
- * against the compressed form so compress=false extract passes do not false-invalidate.
- */
-async function hashForKeyedValidation(
-  raw: string | undefined | null,
-  config: Configuration,
-  masterStyleMap: MasterStyleMap,
-): Promise<string | null> {
-  return hashExtractionContent(raw, config, true, masterStyleMap)
-}
-
-/**
- * Whether a keyed node should be hash-validated and reminted when content drifts.
+ * Whether a keyed node's key should be discarded and reminted from its body.
  *
  * Only during origin-language extraction. Target-lang passes (including
  * `/request-translated-file`) must not remint: that path often runs with
  * injectDataKey=false, so dropping the key leaves English with no anchor for
  * mismatch-apply / setInnerContent — bust then serves untranslated HTML.
  *
- * - Origin-lang + origin stamp or unstamped: remint when hash drifts.
+ * Only on compress=true passes. Keys are minted in the compressed form, so a
+ * compress=false pass would hash the same body differently and overwrite a
+ * perfectly good anchor with a non-canonical one. Reminting is therefore
+ * restricted to the pass that mints keys in the first place.
+ *
+ * - Origin-lang + compress + origin stamp or unstamped: always remint. A key
+ *   here is untrusted whether or not it matches the body: customers paste
+ *   served HTML back into their CMS, so origin markup can carry keys we never
+ *   minted and never registered in the text map. Skipping those left the string
+ *   invisible to extraction forever — it never reached the map, so nothing could
+ *   request a translation for it.
  * - Origin-lang + target stamp: never remint (body is translated).
- * - Target-lang pass: never remint (polyglot mismatch-apply handles render).
+ * - Target-lang pass, or compress=false: never remint.
  */
 function shouldInvalidateStaleKeys(
   el: Element,
   currentLanguage: string | undefined,
   config: Configuration,
+  compress: boolean,
 ): boolean {
+  if (!compress) return false
   const originLang = (config.originLanguage || '').toLowerCase()
   if (!originLang) return false
   const current = (currentLanguage || '').toLowerCase()
@@ -811,12 +778,11 @@ async function processAttributes(
       // Injected placeholder form — still valid.
       if (isHashPlaceholder(val, existingHash)) continue
       // Only remint on origin-language passes for origin-stamped/unstamped nodes.
-      if (!shouldInvalidateStaleKeys(el, currentLanguage, config)) {
+      if (!shouldInvalidateStaleKeys(el, currentLanguage, config, compress)) {
         continue
       }
-      const expected = await hashForKeyedValidation(val, config, masterStyleMap)
-      if (expected && expected.toLowerCase() === existingHash.toLowerCase()) continue
-      // Stale attribute key: drop and re-extract below.
+      // Untrusted on origin content even when it still matches the value — a
+      // pasted-in key is correct for the text yet absent from the text map.
       el.removeAttribute(keyAttr)
     }
     if (!val?.trim()) continue
@@ -1167,12 +1133,10 @@ export async function extractStrings(
 
         // Only invalidate on origin-language extraction. Target-lang passes keep
         // the key so mismatch-apply can still look up / render translations.
-        if (shouldInvalidateStaleKeys(el, currentLanguage, config)) {
-          const expected = await hashForKeyedValidation(inner, config, masterStyleMap)
-          if (!expected || expected.toLowerCase() === existingHash.toLowerCase()) {
-            return
-          }
-          // Content changed under a stale key — drop anchors and re-extract.
+        if (shouldInvalidateStaleKeys(el, currentLanguage, config, compress)) {
+          // Key is untrusted on origin content whether or not it matches the
+          // body — see shouldInvalidateStaleKeys. Drop anchors and re-extract so
+          // the string reaches the text map and can be requested.
           el.removeAttribute(FRENGLISH_DATA_KEY)
           el.removeAttribute('translated-lang')
           originallyTagged.delete(el)
