@@ -1,6 +1,6 @@
 {
     "name": "@frenglish/utils",
-    "version": "1.0.64",
+    "version": "1.0.65",
     "description": "Utils for Frenglish translation service",
     "type": "module",
     "main": "dist/index.js",
